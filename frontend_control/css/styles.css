@@ -1,0 +1,195 @@
+/* ==========================================================================
+   ESTILOS PERSONALIZADOS MOBILE FIRST - CONTROL VEHÍCULO IoT
+   ========================================================================== */
+
+:root {
+  --iot-bg-dark: #0b1120;
+  --iot-bg-surface: #111827;
+  --iot-bg-panel: #0f172a;
+  --iot-accent: #00d2ff;
+  --iot-accent-glow: rgba(0, 210, 255, 0.35);
+  --iot-danger-glow: rgba(220, 53, 69, 0.45);
+}
+
+html, body {
+  background-color: var(--iot-bg-dark);
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overscroll-behavior-y: contain;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.bg-iot-dark {
+  background-color: var(--iot-bg-dark) !important;
+}
+
+.bg-iot-surface {
+  background-color: var(--iot-bg-surface) !important;
+}
+
+.bg-iot-panel {
+  background-color: var(--iot-bg-panel) !important;
+}
+
+/* ==========================================================================
+   INDICADORES DE CONEXIÓN (3 PÍLDORAS REALES)
+   ========================================================================== */
+.status-pill {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.dot-online {
+  background-color: #ffffff;
+  box-shadow: 0 0 6px #ffffff;
+}
+
+.dot-warning {
+  background-color: #111827;
+}
+
+.dot-offline {
+  background-color: #ffffff;
+}
+
+.dot-neutral {
+  background-color: #cbd5e1;
+}
+
+/* ==========================================================================
+   JOYSTICK VIRTUAL CIRCULAR RESPONSIVO
+   ========================================================================== */
+.joystick-zone {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.14) 0%, rgba(15, 23, 42, 0.95) 75%);
+  border: 2px solid rgba(56, 189, 248, 0.45);
+  box-shadow: inset 0 0 28px rgba(0, 210, 255, 0.15), 0 0 18px rgba(0, 0, 0, 0.5);
+  touch-action: none; /* Crítico para operar con dedo sin hacer scroll en móvil */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+
+.joystick-zone:active {
+  cursor: grabbing;
+  border-color: var(--iot-accent);
+}
+
+.joystick-zone.joystick-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
+
+/* Punto neutral central visible */
+.joystick-center-mark {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px dashed rgba(148, 163, 184, 0.65);
+  background-color: rgba(56, 189, 248, 0.18);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Palanca móvil (Thumb) */
+.joystick-thumb {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #38bdf8, #0284c7);
+  color: #0b1120;
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px var(--iot-accent-glow), inset 0 2px 4px rgba(255, 255, 255, 0.45);
+  transform: translate3d(0px, 0px, 0px);
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.joystick-thumb.dragging {
+  transition: none; /* Respuesta inmediata al dedo/ratón sin retardo */
+  background: linear-gradient(145deg, #00d2ff, #2563eb);
+  box-shadow: 0 0 24px var(--iot-accent);
+}
+
+/* Etiquetas de dirección dentro del aro */
+.joy-label {
+  position: absolute;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(148, 163, 184, 0.75);
+  pointer-events: none;
+}
+
+.joy-up {
+  top: 10px;
+}
+
+.joy-down {
+  bottom: 10px;
+}
+
+.joy-left {
+  left: 12px;
+}
+
+.joy-right {
+  right: 12px;
+}
+
+/* ==========================================================================
+   BOTÓN DETENER PRIORITARIO Y CONTROLES TÁCTILES
+   ========================================================================== */
+.stop-priority-btn {
+  letter-spacing: 0.04em;
+  border: 2px solid #ff6b81;
+  box-shadow: 0 0 18px var(--iot-danger-glow);
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.stop-priority-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 0 28px rgba(220, 53, 69, 0.85);
+}
+
+.cmd-sec-btn {
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Ajustes para pantallas muy pequeñas */
+@media (max-width: 380px) {
+  .joystick-zone {
+    width: 210px;
+    height: 210px;
+  }
+
+  .joystick-thumb {
+    width: 62px;
+    height: 62px;
+  }
+}
