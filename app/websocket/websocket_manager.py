@@ -5,6 +5,7 @@ al canal exclusivo de cada vehículo (/ws/{id_vehiculo}) y difundir estados en t
 """
 from typing import Any, Dict, List
 from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
 
 
 class WebSocketManager:
@@ -38,13 +39,14 @@ class WebSocketManager:
     ) -> None:
         """
         Envía un mensaje JSON en tiempo real a todos los clientes suscritos
-        al canal del vehículo indicado.
+        al canal del vehículo indicado, convirtiendo objetos datetime con jsonable_encoder.
         """
+        safe_payload = jsonable_encoder(payload)
         conexiones = self.active_connections.get(id_vehiculo, [])
         conexiones_caidas: List[WebSocket] = []
         for ws in conexiones:
             try:
-                await ws.send_json(payload)
+                await ws.send_json(safe_payload)
             except Exception:
                 conexiones_caidas.append(ws)
 

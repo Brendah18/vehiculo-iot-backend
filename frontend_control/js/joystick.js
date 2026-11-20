@@ -1,44 +1,56 @@
 /**
  * Módulo de Joystick Virtual Circular (ES6 Module)
- * - Operable por Mouse y Pointer/Touch Events.
+ * - Soporte nativo para Touch Events en móviles (touchstart, touchmove, touchend con e.touches[0] y e.preventDefault()).
+ * - Soporte para Mouse en escritorio (mousedown, mousemove, mouseup).
  * - Mapeo directo a comandos reales: AVANZAR, RETROCEDER, IZQUIERDA, DERECHA y DETENER.
- * - Control de ráfagas (debouncing por cambio de estado): solo emite evento cuando
- *   cambia la dirección efectiva, evitando saturar la red por cada píxel o fotograma.
- * - Retorno automático al punto neutral central y emisión prioritaria de DETENER
- *   al soltar, cancelar toque o perder foco de ventana.
+ * - Retorno automático al centro y envío prioritario de DETENER al soltar.
  */
 
 export class VirtualJoystick {
-  /**
-   * @param {Object} options
-   * @param {HTMLElement} options.zoneElement Contenedor circular del joystick
-   * @param {HTMLElement} options.thumbElement Palanca móvil (thumb)
-   * @param {(direction: 'AVANZAR'|'RETROCEDER'|'IZQUIERDA'|'DERECHA'|'DETENER') => void} options.onDirectionChange
-   */
   constructor({ zoneElement, thumbElement, onDirectionChange }) {
     this.zone = zoneElement;
     this.thumb = thumbElement;
     this.onDirectionChange = onDirectionChange || (() => {});
 
     this.isDragging = false;
-    this.activePointerId = null;
     this.currentDirection = "DETENER";
     this.disabled = false;
-
-    // Porcentaje mínimo de desplazamiento respecto al radio para salir de la zona muerta (deadzone)
-    this.deadzoneRatio = 0.28;
+    this.deadzoneRatio = 0.25;
 
     this.bindEvents();
   }
 
   bindEvents() {
-    // Uso de Pointer Events (unifica Mouse y Touch en navegadores modernos)
-    this.zone.addEventListener("pointerdown", (e) => this.handlePointerDown(e));
-    window.addEventListener("pointermove", (e) => this.handlePointerMove(e));
-    window.addEventListener("pointerup", (e) => this.handlePointerUp(e));
-    window.addEventListener("pointercancel", (e) => this.handlePointerUp(e));
+    if (!this.zone) return;
 
-    // Seguridad adicional: si la pestaña pierde foco o visibilidad mientras se arrastra, enviar DETENER
+    // 1. Eventos Táctiles para Celular (passive: false es crítico para que e.preventDefault() bloquee el scroll)
+    this.zone.addEventListener(
+      "touchstart",
+      (e) => this.handleTouchStart(e),
+      { passive: false }
+    );
+    window.addEventListener(
+      "touchmove",
+      (e) => this.handleTouchMove(e),
+      { passive: false }
+    );
+    window.addEventListener(
+      "touchend",
+      (e) => this.handleTouchEnd(e),
+      { passive: false }
+    );
+    window.addEventListener(
+      "touchcancel",
+      (e) => this.handleTouchEnd(e),
+      { passive: false }
+    );
+
+    // 2. Eventos de Mouse para PC / Escritorio
+    this.zone.addEventListener("mousedown", (e) => this.handleMouseDown(e));
+    window.addEventListener("mousemove", (e) => this.handleMouseMove(e));
+    window.addEventListener("mouseup", () => this.handleMouseUp());
+
+    // Seguridad al perder foco o cambiar de pestaña en el celular
     window.addEventListener("blur", () => this.forceStop());
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
@@ -57,50 +69,72 @@ export class VirtualJoystick {
     }
   }
 
-  handlePointerDown(event) {
+  /**
+   * Inicio de toque en pantalla móvil (touchstart)
+   */
+  handleTouchStart(e) {
     if (this.disabled) return;
-    event.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
+    const touch = e.touches && e.touches[0];
+    if (!touch) return;
 
     this.isDragging = true;
-    this.activePointerId = event.pointerId;
     this.thumb.classList.add("dragging");
-
-    try {
-      this.zone.setPointerCapture(event.pointerId);
-    } catch {
-      // Ignorar si el navegador no soporta setPointerCapture en ese dispositivo
-    }
-
-    this.updateFromClientCoords(event.clientX, event.clientY);
+    this.updateFromClientCoords(touch.clientX, touch.clientY);
   }
 
-  handlePointerMove(event) {
+  /**
+   * Arrastre del dedo en pantalla móvil (touchmove)
+   * Usa e.touches[0].clientX y e.touches[0].clientY y evita el scroll con e.preventDefault()
+   */
+  handleTouchMove(e) {
     if (!this.isDragging || this.disabled) return;
-    if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
-      return;
+    if (e.cancelable) {
+      e.preventDefault();
     }
 
-    this.updateFromClientCoords(event.clientX, event.clientY);
+    const touch = e.touches && e.touches[0];
+    if (!touch) return;
+
+    this.updateFromClientCoords(touch.clientX, touch.clientY);
   }
 
-  handlePointerUp(event) {
+  /**
+   * Fin de toque en pantalla móvil (touchend / touchcancel)
+   */
+  handleTouchEnd(e) {
     if (!this.isDragging) return;
-    if (
-      event &&
-      this.activePointerId !== null &&
-      event.pointerId !== undefined &&
-      event.pointerId !== this.activePointerId
-    ) {
+    if (e && e.touches && e.touches.length > 0) {
       return;
     }
-
     this.resetToCenterAndStop();
   }
 
   /**
-   * Calcula posición relativa dentro del círculo, limita el radio máximo
-   * y determina la dirección cardinal efectiva.
+   * Soporte Mouse en escritorio
    */
+  handleMouseDown(e) {
+    if (this.disabled || e.button !== 0) return;
+    e.preventDefault();
+
+    this.isDragging = true;
+    this.thumb.classList.add("dragging");
+    this.updateFromClientCoords(e.clientX, e.clientY);
+  }
+
+  handleMouseMove(e) {
+    if (!this.isDragging || this.disabled) return;
+    this.updateFromClientCoords(e.clientX, e.clientY);
+  }
+
+  handleMouseUp() {
+    if (!this.isDragging) return;
+    this.resetToCenterAndStop();
+  }
+
   updateFromClientCoords(clientX, clientY) {
     const rect = this.zone.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -120,18 +154,23 @@ export class VirtualJoystick {
       clampedY = dy * ratio;
     }
 
-    // Mover visualmente el thumb
     this.thumb.style.transform = `translate3d(${clampedX.toFixed(1)}px, ${clampedY.toFixed(1)}px, 0px)`;
 
-    // Determinar si superó la zona neutral (deadzone)
     const normalizedDistance = maxRadius > 0 ? Math.min(distance / maxRadius, 1) : 0;
     if (normalizedDistance < this.deadzoneRatio) {
       this.emitIfDirectionChanged("DETENER");
       return;
     }
 
-    // Ángulo en grados (-180 a 180), donde -90 es arriba (AVANZAR)
     const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+    const positiveAngle = Math.round((angleDeg + 360) % 360);
+    const powerPct = Math.round(normalizedDistance * 100);
+
+    const lblAngle = document.getElementById("lbl-joy-angle");
+    const lblPower = document.getElementById("lbl-joy-power");
+    if (lblAngle) lblAngle.textContent = `${positiveAngle}°`;
+    if (lblPower) lblPower.textContent = `${powerPct}%`;
+
     let nextDirection = "DETENER";
 
     if (angleDeg >= -135 && angleDeg < -45) {
@@ -144,13 +183,14 @@ export class VirtualJoystick {
       nextDirection = "IZQUIERDA";
     }
 
+    const lblJoyDir = document.getElementById("lbl-joy-dir");
+    if (lblJoyDir) {
+      lblJoyDir.textContent = nextDirection === "DETENER" ? "En espera" : nextDirection;
+    }
+
     this.emitIfDirectionChanged(nextDirection);
   }
 
-  /**
-   * Emite la nueva dirección únicamente si es distinta a la dirección activa actual
-   * (Control estricto anti-ráfagas / debouncing de estado).
-   */
   emitIfDirectionChanged(nextDirection) {
     if (nextDirection === this.currentDirection) {
       return;
@@ -159,14 +199,17 @@ export class VirtualJoystick {
     this.onDirectionChange(nextDirection);
   }
 
-  /**
-   * Retorna inmediatamente el thumb al punto neutral central y emite DETENER con prioridad.
-   */
   resetToCenterAndStop() {
     this.isDragging = false;
-    this.activePointerId = null;
     this.thumb.classList.remove("dragging");
     this.thumb.style.transform = "translate3d(0px, 0px, 0px)";
+
+    const lblAngle = document.getElementById("lbl-joy-angle");
+    const lblPower = document.getElementById("lbl-joy-power");
+    const lblJoyDir = document.getElementById("lbl-joy-dir");
+    if (lblAngle) lblAngle.textContent = "0°";
+    if (lblPower) lblPower.textContent = "0%";
+    if (lblJoyDir) lblJoyDir.textContent = "En espera";
 
     if (this.currentDirection !== "DETENER") {
       this.currentDirection = "DETENER";
@@ -174,14 +217,18 @@ export class VirtualJoystick {
     }
   }
 
-  /**
-   * Fuerza paro inmediato incluso si ya estaba en centro.
-   */
   forceStop() {
     this.isDragging = false;
-    this.activePointerId = null;
     this.thumb.classList.remove("dragging");
     this.thumb.style.transform = "translate3d(0px, 0px, 0px)";
+
+    const lblAngle = document.getElementById("lbl-joy-angle");
+    const lblPower = document.getElementById("lbl-joy-power");
+    const lblJoyDir = document.getElementById("lbl-joy-dir");
+    if (lblAngle) lblAngle.textContent = "0°";
+    if (lblPower) lblPower.textContent = "0%";
+    if (lblJoyDir) lblJoyDir.textContent = "En espera";
+
     this.currentDirection = "DETENER";
     this.onDirectionChange("DETENER");
   }

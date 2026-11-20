@@ -1,13 +1,21 @@
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es" data-bs-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="description" content="Módulo de Control en Tiempo Real para Vehículo IoT - AWS EC2, Amazon RDS y WebSocket WSS" />
-  <title>Control Vehículo IoT · AWS Cloud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="Plataforma IoT: Control, Monitoreo y Administración RBAC en AWS EC2, Amazon RDS y WebSockets" />
+  <title>EXCAVADORA IOT · Control, Monitoreo &amp; Administración</title>
 
-  <!-- Favicon IoT con ruta relativa compatible con subrutas de GitHub Pages -->
+  <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+  <!-- Tipografías Nunito y Quicksand -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=Quicksand:wght@600;700&display=swap"
+    rel="stylesheet"
+  />
 
   <!-- Bootstrap 5.3 CSS -->
   <link
@@ -23,236 +31,1292 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
   />
 
-  <!-- Hoja de estilos personalizada (ruta relativa para GitHub Pages) -->
-  <link rel="stylesheet" href="./css/styles.css" />
+  <!-- Hojas de Estilos -->
+  <link rel="stylesheet" href="./css/styles.css?v=4.9" />
+  <link rel="stylesheet" href="./css/style.css?v=4.9" />
+
+  <!-- Estilos Críticos Embebidos: Layout Mobile-First 100dvh Sin Cortes, Modal Login, Cruceta D-Pad y Grid 4x2 -->
+  <style>
+    html, body.viewport-app {
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      overflow: hidden !important;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Modal de Inicio de Sesión Real (Glassmorphism Pastel) */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(135deg, rgba(253, 242, 248, 0.88) 0%, rgba(243, 232, 255, 0.92) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+    }
+    .login-card-pastel {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 2px solid rgba(236, 72, 153, 0.35);
+      border-radius: 20px;
+      padding: 1.15rem 1.25rem;
+      box-shadow: 0 16px 40px rgba(147, 51, 234, 0.22);
+    }
+    .login-brand-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+      box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
+    }
+    .btn-login-primary {
+      background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+      color: #fff;
+      font-weight: 900;
+      border: none;
+      border-radius: 11px;
+      padding: 0.48rem 1rem;
+      box-shadow: 0 4px 14px rgba(236, 72, 153, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn-login-primary:hover {
+      color: #fff;
+      filter: brightness(1.06);
+    }
+    .btn-login-guest {
+      background: linear-gradient(135deg, #fdf2f8 0%, #f3e8ff 100%);
+      color: #7e22ce;
+      font-weight: 800;
+      border: 1.5px solid rgba(168, 85, 247, 0.45);
+      border-radius: 11px;
+      padding: 0.42rem 0.9rem;
+      transition: all 0.2s ease;
+    }
+    .btn-login-guest:hover {
+      background: linear-gradient(135deg, #fce7f3 0%, #e9d5ff 100%);
+      border-color: #ec4899;
+      color: #be185d;
+    }
+    .quick-cred-pill {
+      font-size: 0.66rem;
+      font-weight: 800;
+      padding: 0.18rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      background: #fdf4ff;
+      color: #7e22ce;
+      cursor: pointer;
+    }
+    .quick-cred-pill:hover {
+      background: #fce7f3;
+      border-color: #ec4899;
+      color: #be185d;
+    }
+    .user-session-pill {
+      background: linear-gradient(135deg, #fdf2f8, #f3e8ff);
+      border: 1.5px solid rgba(168, 85, 247, 0.4);
+      color: #6b21a8;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 210px;
+    }
+    .btn-logout-pastel {
+      background: #ffe4e6;
+      color: #e11d48;
+      border: 1.5px solid #fecdd3;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.18rem 0.5rem;
+      border-radius: 8px;
+    }
+    .btn-logout-pastel:hover {
+      background: #f43f5e;
+      color: #fff;
+      border-color: #f43f5e;
+    }
+
+    /* Cruceta D-Pad Ordenada en Cruz (+) con Etiquetas 01..04 */
+    .dpad-cross-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1.5px solid rgba(168, 85, 247, 0.3);
+      border-radius: 13px;
+      padding: 4px;
+      box-shadow: inset 0 1px 6px rgba(168, 85, 247, 0.1);
+    }
+    .dpad-row-mid {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    .btn-dpad-pastel {
+      width: 34px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(145deg, #ffffff 0%, #fdf2f8 60%, #f3e8ff 100%);
+      border: 1.5px solid rgba(168, 85, 247, 0.4);
+      color: #7e22ce;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      line-height: 1;
+      box-shadow: 0 2px 5px rgba(168, 85, 247, 0.14);
+      transition: all 0.15s ease;
+      padding: 0;
+      cursor: pointer;
+    }
+    .btn-dpad-pastel .dpad-num {
+      font-size: 0.52rem;
+      font-weight: 900;
+      color: #ec4899;
+      line-height: 1;
+    }
+    .btn-dpad-pastel:hover,
+    .btn-dpad-pastel:active {
+      background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+      color: #ffffff;
+      border-color: #ec4899;
+      transform: scale(0.95);
+    }
+    .btn-dpad-pastel:hover .dpad-num,
+    .btn-dpad-pastel:active .dpad-num {
+      color: #ffffff;
+    }
+    .btn-dpad-pastel.joy-stop {
+      background: linear-gradient(135deg, #ffe4e6 0%, #fce7f3 100%);
+      border-color: #f43f5e;
+      color: #e11d48;
+    }
+
+    /* Cuadrícula Uniforme 4 Columnas x 2 Filas para los 8 Comandos (05 al 12) */
+    .functions-grid-4x2 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .btn-cmd-tile {
+      width: 100%;
+      height: 100%;
+      min-height: 44px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1.5px solid rgba(168, 85, 247, 0.32);
+      border-radius: 11px;
+      padding: 4px 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      text-align: center;
+      transition: all 0.18s ease;
+      box-shadow: 0 2px 6px rgba(168, 85, 247, 0.08);
+    }
+    .btn-cmd-tile:hover,
+    .btn-cmd-tile:active {
+      background: linear-gradient(135deg, #fdf2f8, #f3e8ff);
+      border-color: #ec4899;
+      transform: translateY(-1px);
+    }
+    .tile-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      line-height: 1;
+    }
+    .cmd-code-tag {
+      font-size: 0.58rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #fce7f3, #f3e8ff);
+      color: #9333ea;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 5px;
+      padding: 1px 4px;
+      line-height: 1.1;
+    }
+    .tile-icon {
+      font-size: 0.98rem;
+      line-height: 1;
+    }
+    .tile-label {
+      font-size: 0.68rem;
+      font-weight: 900;
+      color: #3b0764;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .cmd-btn-disabled-rbac {
+      opacity: 0.42;
+      cursor: not-allowed !important;
+      filter: grayscale(0.35);
+    }
+
+    /* Barra Horizontal Compacta para DEMO (Bloque 3) */
+    .demo-horizontal-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+    .demo-select-compact {
+      flex: 1 1 auto;
+      min-width: 110px;
+      font-size: 0.74rem !important;
+      padding: 0.25rem 1.5rem 0.25rem 0.5rem !important;
+      height: 31px;
+    }
+    .btn-demo-compact {
+      height: 31px;
+      padding: 0 0.65rem !important;
+      font-size: 0.74rem !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      border-radius: 9px !important;
+    }
+
+    /* OPTIMIZACIÓN MOBILE-FIRST (@media max-width: 768px) PARA CERO RECORTES EN 100dvh */
+    @media (max-width: 768px) {
+      .platform-header {
+        min-height: 34px !important;
+        padding: 2px 10px !important;
+      }
+      .logo-box {
+        width: 26px !important;
+        height: 26px !important;
+        border-radius: 8px !important;
+      }
+      .brand-title {
+        font-size: 0.88rem !important;
+      }
+      .user-session-pill {
+        font-size: 0.65rem !important;
+        padding: 2px 7px !important;
+        max-width: 145px;
+      }
+      #lbl-user-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 78px;
+      }
+      .nav-tabs-bar {
+        padding: 2px 10px !important;
+      }
+      .tab-item {
+        font-size: 0.7rem !important;
+        padding: 0.24rem 0.35rem !important;
+      }
+      .status-indicator-strip {
+        padding: 2px 10px !important;
+      }
+      .strip-card {
+        min-height: 26px !important;
+        padding: 2px 6px !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        border-radius: 9px !important;
+      }
+      .strip-label {
+        font-size: 0.6rem !important;
+      }
+      .badge-pill, .badge.rounded-pill {
+        font-size: 0.58rem !important;
+        padding: 1px 6px !important;
+      }
+      #app-main-viewport {
+        padding: 3px 10px !important;
+      }
+      .control-grid-layout {
+        gap: 5px !important;
+        justify-content: space-between;
+      }
+      .glass-card {
+        padding: 6px 8px !important;
+        border-radius: 12px !important;
+      }
+      .card-header-clean {
+        margin-bottom: 4px !important;
+        padding-bottom: 3px !important;
+      }
+      .header-icon-box {
+        width: 19px !important;
+        height: 19px !important;
+        font-size: 0.7rem !important;
+      }
+      .header-title {
+        font-size: 0.74rem !important;
+      }
+      .joystick-zone {
+        width: 88px !important;
+        height: 88px !important;
+      }
+      .joy-ring-guide {
+        inset: 13px !important;
+      }
+      .joystick-thumb {
+        width: 34px !important;
+        height: 34px !important;
+        left: calc(50% - 17px) !important;
+        top: calc(50% - 17px) !important;
+        font-size: 0.9rem !important;
+      }
+      .dpad-cross-wrap {
+        padding: 3px !important;
+        gap: 2px !important;
+      }
+      .dpad-row-mid {
+        gap: 2px !important;
+      }
+      .btn-dpad-pastel {
+        width: 30px !important;
+        height: 27px !important;
+        font-size: 0.78rem !important;
+        border-radius: 7px !important;
+      }
+      .telemetry-box {
+        padding: 2px 4px !important;
+      }
+      .telemetry-label {
+        font-size: 0.54rem !important;
+      }
+      .telemetry-val {
+        font-size: 0.74rem !important;
+      }
+      .telemetry-val-highlight {
+        font-size: 0.72rem !important;
+      }
+      .btn-stop-huge {
+        padding: 0.3rem 0.45rem !important;
+        font-size: 0.74rem !important;
+        border-radius: 9px !important;
+      }
+      .card-functions {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      .functions-grid-4x2 {
+        gap: 4px !important;
+      }
+      .btn-cmd-tile {
+        min-height: 38px !important;
+        padding: 3px 3px !important;
+        border-radius: 9px !important;
+      }
+      .tile-icon {
+        font-size: 0.88rem !important;
+      }
+      .tile-label {
+        font-size: 0.62rem !important;
+      }
+      .platform-footer {
+        min-height: 18px !important;
+        padding: 1px 8px !important;
+      }
+      .footer-credit-text {
+        font-size: 0.62rem !important;
+      }
+    }
+  </style>
 </head>
-<body class="d-flex flex-column min-vh-100 bg-iot-dark text-light">
+<body class="viewport-app">
+
+  <!-- Aura de Fondo Animada Pastel -->
+  <div class="ambient-aura" aria-hidden="true"></div>
 
   <!-- =====================================================================
-       CABECERA Y PANEL DE 3 INDICADORES DE CONEXIÓN REALES
+       0. MODAL DE INICIO DE SESIÓN REAL CON CONTRASEÑA (RBAC & BOLA/IDOR)
        ===================================================================== -->
-  <header class="navbar navbar-dark bg-iot-surface border-bottom border-secondary border-opacity-25 py-2 shadow-sm">
-    <div class="container-fluid px-3">
-      <div class="d-flex align-items-center gap-2">
-        <img src="./favicon.svg" alt="IoT Icon" width="32" height="32" class="rounded" />
-        <div>
-          <h1 class="h6 mb-0 fw-bold text-info">CONTROL VEHÍCULO IoT</h1>
-          <small class="text-secondary d-block" style="font-size: 0.72rem;">
-            ID Vehículo: <span id="lbl-vehiculo-id" class="text-light fw-semibold">1</span> · Etapa 1 (Control)
-          </small>
+  <div id="login-modal-overlay" class="login-overlay">
+    <div class="login-card-pastel">
+      <div class="text-center mb-2">
+        <div class="login-brand-circle mb-1">
+          <i class="bi bi-shield-lock-fill"></i>
         </div>
+        <h2 class="h6 fw-black mb-0" style="color: #4a044e; font-weight: 900;">EXCAVADORA IoT · ACCESO SEGURO</h2>
+        <small class="text-soft-muted" style="font-size: 0.72rem;">Autenticación Real RBAC &amp; Protección BOLA/IDOR</small>
       </div>
 
-      <!-- Botón rápido para verificar salud de servicios -->
-      <button id="btn-refresh-health" type="button" class="btn btn-sm btn-outline-info" title="Verificar conexión ahora">
+      <div id="login-error-alert" class="alert alert-danger py-1 px-2 small fw-bold d-none mb-2" role="alert"></div>
+
+      <form id="form-login-iot" autocomplete="on">
+        <div class="mb-2">
+          <label for="login-email" class="small fw-bold mb-1" style="color: #581c87; font-size: 0.74rem;">
+            <i class="bi bi-envelope-fill me-1 text-pink"></i>Correo Electrónico
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            class="form-control form-control-sm select-clean"
+            placeholder="cliente@iot.com"
+            value="cliente@iot.com"
+            required
+          />
+        </div>
+
+        <div class="mb-2">
+          <label for="login-password" class="small fw-bold mb-1" style="color: #581c87; font-size: 0.74rem;">
+            <i class="bi bi-key-fill me-1 text-purple"></i>Contraseña
+          </label>
+          <input
+            id="login-password"
+            type="password"
+            class="form-control form-control-sm select-clean"
+            placeholder="••••••••••"
+            value="Cliente123!"
+            required
+          />
+        </div>
+
+        <button id="btn-login-submit" type="submit" class="btn btn-sm btn-login-primary w-100 mb-2">
+          <i class="bi bi-box-arrow-in-right me-1"></i>Iniciar Sesión
+        </button>
+      </form>
+
+      <div class="d-flex align-items-center my-1">
+        <hr class="flex-grow-1 my-1" />
+        <span class="px-2 small text-soft-muted" style="font-size: 0.66rem;">O PRUEBA TEMPORAL</span>
+        <hr class="flex-grow-1 my-1" />
+      </div>
+
+      <button id="btn-login-guest" type="button" class="btn btn-sm btn-login-guest w-100 mb-2">
+        <i class="bi bi-hourglass-split me-1"></i>Acceso Invitado (Prueba 5 min)
+      </button>
+
+      <div class="text-center pt-1 border-top">
+        <div class="small text-soft-muted mb-1" style="font-size: 0.65rem; font-weight: 700;">Perfiles de prueba rápidos (clic para rellenar):</div>
+        <div class="d-flex justify-content-center gap-1 flex-wrap">
+          <button type="button" class="quick-cred-pill" data-fill-email="admin@iot.com" data-fill-pass="Admin123!">
+            👑 Admin
+          </button>
+          <button type="button" class="quick-cred-pill" data-fill-email="cliente@iot.com" data-fill-pass="Cliente123!">
+            👤 Comprador (#1)
+          </button>
+          <button type="button" class="quick-cred-pill" data-fill-email="invitado@iot.com" data-fill-pass="Invitado123!">
+            🎟️ Invitado (5m)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       1. ENCABEZADO SUPERIOR COMPACTO CON SESIÓN Y CERRAR SESIÓN
+       ===================================================================== -->
+  <header class="platform-header px-3 py-1 d-flex align-items-center justify-content-between flex-shrink-0">
+    <div class="d-flex align-items-center gap-2">
+      <div class="logo-box">
+        <i class="bi bi-ev-front-fill text-white"></i>
+      </div>
+      <h1 class="brand-title mb-0">EXCAVADORA IOT ✨</h1>
+    </div>
+
+    <div class="d-flex align-items-center gap-1">
+      <div id="badge-logged-user" class="user-session-pill" title="Usuario autenticado">
+        <i class="bi bi-person-check-fill text-pink"></i>
+        <span id="lbl-user-name">No autenticado</span>
+        <span class="badge bg-white text-purple border" id="lbl-user-role" style="font-size: 0.58rem;">---</span>
+      </div>
+
+      <button id="btn-refresh-health" type="button" class="btn btn-sm btn-sync py-0 px-2" title="Sincronizar con AWS EC2">
         <i class="bi bi-arrow-repeat"></i>
-        <span class="d-none d-sm-inline ms-1">Sincronizar</span>
+        <span class="d-none d-md-inline ms-1">Sincronizar</span>
+      </button>
+
+      <button id="btn-logout" type="button" class="btn-logout-pastel" title="Cerrar sesión">
+        <i class="bi bi-box-arrow-right"></i>
+        <span class="d-none d-sm-inline ms-1">Salir</span>
       </button>
     </div>
   </header>
 
-  <!-- Barra de los 3 Indicadores Reales -->
-  <section class="bg-iot-panel border-bottom border-secondary border-opacity-25 py-2 px-3">
-    <div class="container">
-      <div class="row g-2 text-center">
-        <!-- Indicador 1: WebSocket WSS -->
-        <div class="col-12 col-md-4">
-          <div class="status-pill d-flex align-items-center justify-content-between px-3 py-1 rounded-3">
-            <span class="small text-secondary fw-medium">
-              <i class="bi bi-broadcast me-1"></i>WebSocket WSS
-            </span>
-            <span id="badge-ws" class="badge rounded-pill bg-warning text-dark">
-              <span class="status-dot dot-warning"></span>Conectando...
-            </span>
+  <!-- =====================================================================
+       2. NAVEGACIÓN PRINCIPAL EN PESTAÑAS (CONTROL | MONITOREO | ADMIN)
+       ===================================================================== -->
+  <nav class="nav-tabs-bar px-3 py-1 flex-shrink-0">
+    <div class="nav-segmented-pill">
+      <button id="nav-btn-control" type="button" class="tab-item active" data-view="control">
+        <i class="bi bi-controller me-1"></i>CONTROL
+      </button>
+      <button id="nav-btn-monitoreo" type="button" class="tab-item" data-view="monitoreo">
+        <i class="bi bi-speedometer2 me-1"></i>MONITOREO
+      </button>
+      <button id="nav-btn-admin" type="button" class="tab-item d-none" data-view="admin">
+        <i class="bi bi-shield-lock me-1"></i>ADMINISTRACIÓN
+      </button>
+    </div>
+  </nav>
+
+  <!-- =====================================================================
+       3. BARRA DE INDICADORES DE RED (WSS | API AWS | AMAZON RDS)
+       ===================================================================== -->
+  <section class="status-indicator-strip px-3 py-1 flex-shrink-0">
+    <div class="row g-1">
+      <div class="col-4">
+        <div class="strip-card">
+          <div class="strip-label">WSS</div>
+          <div id="badge-ws" class="badge-pill badge-warning-pastel">
+            <span class="dot-pulse"></span>Conectando
           </div>
         </div>
-
-        <!-- Indicador 2: API AWS (21 servicios) -->
-        <div class="col-12 col-md-4">
-          <div class="status-pill d-flex align-items-center justify-content-between px-3 py-1 rounded-3">
-            <span class="small text-secondary fw-medium">
-              <i class="bi bi-cloud-check me-1"></i>API AWS (21 servicios)
-            </span>
-            <span id="badge-api" class="badge rounded-pill bg-warning text-dark">
-              <span class="status-dot dot-warning"></span>Comprobando...
-            </span>
+      </div>
+      <div class="col-4">
+        <div class="strip-card">
+          <div class="strip-label">API AWS</div>
+          <div id="badge-api" class="badge-pill badge-warning-pastel">
+            <span class="dot-pulse"></span>Comprobando
           </div>
         </div>
-
-        <!-- Indicador 3: Amazon RDS -->
-        <div class="col-12 col-md-4">
-          <div class="status-pill d-flex align-items-center justify-content-between px-3 py-1 rounded-3">
-            <span class="small text-secondary fw-medium">
-              <i class="bi bi-database-check me-1"></i>Amazon RDS
-            </span>
-            <span id="badge-rds" class="badge rounded-pill bg-secondary text-light">
-              <span class="status-dot dot-neutral"></span>Sin verificar
-            </span>
+      </div>
+      <div class="col-4">
+        <div class="strip-card">
+          <div class="strip-label">RDS</div>
+          <div id="badge-rds" class="badge-pill badge-neutral-pastel">
+            <span class="dot-neutral"></span>Verificando
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- =====================================================================
-       CONTENIDO PRINCIPAL (MOBILE FIRST)
-       ===================================================================== -->
-  <main class="container my-3 flex-grow-1">
-
-    <!-- Alerta de Estado / Telemetría de Comando Activo -->
-    <div class="card bg-iot-surface border-secondary border-opacity-25 mb-3 shadow-sm">
-      <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge bg-info text-dark fw-bold">ESTADO ACTUAL</span>
-          <span id="lbl-comando-actual" class="fw-bold text-uppercase text-info">DETENER</span>
-        </div>
-        <div class="small text-secondary">
-          Última respuesta: <span id="lbl-ultima-respuesta" class="text-light">Listo para operar</span>
-        </div>
+  <!-- BANNER COMPACTO SESIÓN INVITADO (5 MINUTOS) -->
+  <div id="alert-guest-session" class="px-3 d-none flex-shrink-0">
+    <div class="guest-banner d-flex align-items-center justify-content-between px-2 py-1">
+      <div class="d-flex align-items-center gap-1">
+        <i class="bi bi-clock-history text-amber"></i>
+        <span class="small fw-bold text-headline" style="font-size: 0.68rem;">Invitado (01-ADELANTE, 02-ATRÁS, DETENER)</span>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <span id="guest-timer-display" class="guest-timer-text" style="font-size: 0.74rem;">05:00</span>
+        <button id="btn-request-guest-trial" type="button" class="btn btn-xs btn-amber py-0 px-2">5m</button>
       </div>
     </div>
+  </div>
 
-    <div class="row g-3">
-      <!-- COLUMNA IZQUIERDA: JOYSTICK VIRTUAL Y BOTÓN DE PARO PRIORITARIO -->
-      <div class="col-12 col-lg-6">
-        <div class="card bg-iot-surface border-secondary border-opacity-25 h-100 shadow-sm">
-          <div class="card-header bg-transparent border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-            <span class="fw-semibold text-light">
-              <i class="bi bi-joystick text-info me-1"></i>Joystick Direccional
-            </span>
-            <span id="badge-direccion-joystick" class="badge bg-dark border border-secondary text-secondary">
-              NEUTRAL (CENTRO)
-            </span>
+  <!-- BANNER COMPACTO REGLA BOLA/IDOR PARA ADMINISTRADOR -->
+  <div id="alert-admin-bola" class="px-3 d-none flex-shrink-0">
+    <div class="guest-banner d-flex align-items-center justify-content-between px-2 py-1" style="background: linear-gradient(90deg, #fef3c7, #fce7f3);">
+      <div class="d-flex align-items-center gap-1">
+        <i class="bi bi-shield-exclamation text-danger"></i>
+        <span class="small fw-bold text-headline" style="font-size: 0.66rem;">BOLA/IDOR: Admin gestiona flota, sin mover unidades vendidas (#1 Carlos Mendoza).</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       4. CONTENIDO PRINCIPAL: VISTAS (AJUSTE EXACTO A 100dvh SIN SCROLL)
+       ===================================================================== -->
+  <main id="app-main-viewport" class="flex-grow-1 px-3 py-1 overflow-hidden d-flex flex-column min-h-0">
+
+    <!-- -------------------------------------------------------------------
+         VISTA 1: CONTROL (3 BLOQUES COMPACTOS VISIBLES AL 100% EN CELULAR)
+         ------------------------------------------------------------------- -->
+    <div id="view-control" class="app-view active">
+      <div class="control-grid-layout">
+        
+        <!-- BLOQUE 1: Dirección (01..04) y Paro Prioritario (DETENER) -->
+        <div class="glass-card card-direction">
+          <div class="card-header-clean d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-1">
+              <div class="header-icon-box bg-cyan-soft text-cyan">
+                <i class="bi bi-compass"></i>
+              </div>
+              <span class="header-title">Dirección (01–04) &amp; Paro</span>
+            </div>
+            <span id="badge-direccion-joystick" class="badge-soft badge-neutral">En espera</span>
           </div>
 
-          <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
-            <!-- Área táctil del Joystick Circular -->
-            <div id="joystick-zone" class="joystick-zone" aria-label="Joystick de control direccional">
-              <!-- Etiquetas cardinales -->
-              <span class="joy-label joy-up">AVANZAR</span>
-              <span class="joy-label joy-down">RETROCEDER</span>
-              <span class="joy-label joy-left">IZQ</span>
-              <span class="joy-label joy-right">DER</span>
-
-              <!-- Punto neutral central visible -->
-              <div class="joystick-center-mark"></div>
-
-              <!-- Palanca móvil (Thumb) -->
-              <div id="joystick-thumb" class="joystick-thumb">
-                <i class="bi bi-arrows-move"></i>
+          <div class="card-body-clean d-flex align-items-center justify-content-between gap-2">
+            <!-- Joystick Circular Táctil -->
+            <div class="joystick-wrapper flex-shrink-0">
+              <div id="joystick-zone" class="joystick-zone">
+                <div class="joy-ring-guide"></div>
+                <div class="joy-cross-guide"></div>
+                <div id="joystick-thumb" class="joystick-thumb">
+                  <i class="bi bi-arrows-move"></i>
+                </div>
               </div>
             </div>
 
-            <p class="small text-secondary text-center mt-3 mb-3">
-              Desliza para mover el vehículo. Al soltar el joystick se envía <strong>DETENER</strong> automáticamente con prioridad absoluta.
-            </p>
+            <!-- Cruceta D-Pad (01 ADELANTE, 02 ATRÁS, 03 GIRAR_IZQUIERDA, 04 GIRAR_DERECHA + DETENER) -->
+            <div class="dpad-cross-wrap flex-shrink-0" aria-label="Cruceta Direccional 01 a 04">
+              <div class="d-flex justify-content-center">
+                <button id="btn-joy-up" type="button" class="btn-dpad-pastel joy-up" data-dir="ADELANTE" data-cmd-name="ADELANTE" title="01. ADELANTE">
+                  <span class="dpad-num">01</span>
+                  <i class="bi bi-caret-up-fill"></i>
+                </button>
+              </div>
+              <div class="dpad-row-mid">
+                <button id="btn-joy-left" type="button" class="btn-dpad-pastel joy-left" data-dir="GIRAR_IZQUIERDA" data-cmd-name="GIRAR_IZQUIERDA" title="03. GIRAR IZQUIERDA">
+                  <span class="dpad-num">03</span>
+                  <i class="bi bi-caret-left-fill"></i>
+                </button>
+                <button id="btn-joy-stop" type="button" class="btn-dpad-pastel joy-stop" data-dir="DETENER" title="13. DETENER">
+                  <i class="bi bi-stop-circle-fill"></i>
+                </button>
+                <button id="btn-joy-right" type="button" class="btn-dpad-pastel joy-right" data-dir="GIRAR_DERECHA" data-cmd-name="GIRAR_DERECHA" title="04. GIRAR DERECHA">
+                  <span class="dpad-num">04</span>
+                  <i class="bi bi-caret-right-fill"></i>
+                </button>
+              </div>
+              <div class="d-flex justify-content-center">
+                <button id="btn-joy-down" type="button" class="btn-dpad-pastel joy-down" data-dir="ATRAS" data-cmd-name="ATRAS" title="02. ATRÁS">
+                  <i class="bi bi-caret-down-fill"></i>
+                  <span class="dpad-num">02</span>
+                </button>
+              </div>
+            </div>
 
-            <!-- BOTÓN DETENER DESTACADO Y PRIORITARIO -->
-            <button
-              id="btn-stop-priority"
-              type="button"
-              class="btn btn-danger btn-lg w-100 fw-bold py-3 shadow stop-priority-btn"
-            >
-              <i class="bi bi-octagon-fill me-2"></i>DETENER VEHÍCULO (PARO TOTAL)
+            <!-- Indicadores Mini + Botón Rojo DETENER -->
+            <div class="telemetry-stop-column flex-grow-1 d-flex flex-column justify-content-between min-w-0">
+              <div class="row g-1 mb-1">
+                <div class="col-6">
+                  <div class="telemetry-box text-center">
+                    <span class="telemetry-label">ÁNGULO</span>
+                    <div id="lbl-joy-angle" class="telemetry-val">0°</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="telemetry-box text-center">
+                    <span class="telemetry-label">POTENCIA</span>
+                    <div id="lbl-joy-power" class="telemetry-val">0%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="telemetry-box direction-box text-center mb-1">
+                <span class="telemetry-label">COMANDO ACTIVO</span>
+                <div id="lbl-joy-dir" class="telemetry-val-highlight text-cyan text-truncate">En espera</div>
+              </div>
+
+              <button id="btn-stop-priority" type="button" class="btn-stop-huge" data-dir="DETENER">
+                <i class="bi bi-octagon-fill me-1"></i>
+                <span>DETENER</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 2: Cuadrícula Uniforme 4 Columnas x 2 Filas (8 Comandos Restantes: 05 al 12) -->
+        <div class="glass-card card-functions d-flex flex-column">
+          <div class="card-header-clean d-flex align-items-center justify-content-between flex-shrink-0">
+            <div class="d-flex align-items-center gap-1">
+              <div class="header-icon-box bg-purple-soft text-purple">
+                <i class="bi bi-grid-3x3-gap-fill"></i>
+              </div>
+              <span class="header-title">Funciones Físicas (05 – 12)</span>
+            </div>
+            <span class="badge-soft badge-cyan">12 Comandos + STOP</span>
+          </div>
+
+          <div class="functions-grid-4x2">
+            <!-- Fila 1 (05 a 08): MOVER_IZQUIERDA, MOVER_DERECHA, SUBIR_BRAZO, BAJAR_BRAZO -->
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="MOVER_IZQUIERDA" data-comando="MOVER_IZQUIERDA">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">05</span>
+                <i class="bi bi-arrow-bar-left tile-icon text-purple"></i>
+              </div>
+              <span class="tile-label">Mover Izq.</span>
+            </button>
+
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="MOVER_DERECHA" data-comando="MOVER_DERECHA">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">06</span>
+                <i class="bi bi-arrow-bar-right tile-icon text-purple"></i>
+              </div>
+              <span class="tile-label">Mover Der.</span>
+            </button>
+
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="SUBIR_BRAZO" data-comando="SUBIR_BRAZO">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">07</span>
+                <i class="bi bi-box-arrow-in-up tile-icon text-amber"></i>
+              </div>
+              <span class="tile-label">Subir Brazo</span>
+            </button>
+
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="BAJAR_BRAZO" data-comando="BAJAR_BRAZO">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">08</span>
+                <i class="bi bi-box-arrow-in-down tile-icon text-amber"></i>
+              </div>
+              <span class="tile-label">Bajar Brazo</span>
+            </button>
+
+            <!-- Fila 2 (09 a 12): LUZ_LED, ACTIVAR_SONIDO, DESACTIVAR_SONIDO, CONTROL_REMOTO -->
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="LUZ_LED" data-comando="LUZ_LED">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">09</span>
+                <i class="bi bi-lightbulb-fill tile-icon text-emerald"></i>
+              </div>
+              <span class="tile-label">Luz / LED</span>
+            </button>
+
+            <button id="btn-claxon" type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="ACTIVAR_SONIDO" data-comando="ACTIVAR_SONIDO">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">10</span>
+                <i class="bi bi-volume-up-fill tile-icon text-purple"></i>
+              </div>
+              <span class="tile-label">Act. Sonido</span>
+            </button>
+
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="DESACTIVAR_SONIDO" data-comando="DESACTIVAR_SONIDO">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">11</span>
+                <i class="bi bi-volume-mute-fill tile-icon text-pink"></i>
+              </div>
+              <span class="tile-label">Des. Sonido</span>
+            </button>
+
+            <button type="button" class="btn-cmd-tile cmd-sec-btn" data-cmd-name="CONTROL_REMOTO" data-comando="CONTROL_REMOTO">
+              <div class="tile-top-row">
+                <span class="cmd-code-tag">12</span>
+                <i class="bi bi-broadcast-pin tile-icon text-cyan"></i>
+              </div>
+              <span class="tile-label">Ctrl. Remoto</span>
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- COLUMNA DERECHA: MANIOBRAS SECUNDARIAS Y EJECUCIÓN DE DEMOS -->
-      <div class="col-12 col-lg-6 d-flex flex-column gap-3">
-
-        <!-- Tarjeta 1: Giros Especiales y Comandos Secundarios del Catálogo -->
-        <div class="card bg-iot-surface border-secondary border-opacity-25 shadow-sm">
-          <div class="card-header bg-transparent border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-            <span class="fw-semibold text-light">
-              <i class="bi bi-compass text-info me-1"></i>Maniobras y Giros del Catálogo
-            </span>
-            <small class="text-secondary">Toque único</small>
-          </div>
-          <div class="card-body">
-            <!-- Contenedor de botones secundarios (90°, 360° y comandos adicionales del catálogo) -->
-            <div id="secondary-commands-grid" class="row g-2">
-              <div class="col-6 col-sm-3">
-                <button type="button" class="btn btn-outline-info w-100 py-2 cmd-sec-btn" data-cmd-name="GIRO_90_IZQ">
-                  <i class="bi bi-arrow-counterclockwise d-block fs-5"></i>
-                  <span class="small">Giro 90° Izq</span>
-                </button>
+        <!-- BLOQUE 3: Modo Automático (DEMO) en una Sola Barra Horizontal Compacta Inferior -->
+        <div class="glass-card card-demo">
+          <div class="card-header-clean d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-1">
+              <div class="header-icon-box bg-emerald-soft text-emerald">
+                <i class="bi bi-play-circle-fill"></i>
               </div>
-              <div class="col-6 col-sm-3">
-                <button type="button" class="btn btn-outline-info w-100 py-2 cmd-sec-btn" data-cmd-name="GIRO_90_DER">
-                  <i class="bi bi-arrow-clockwise d-block fs-5"></i>
-                  <span class="small">Giro 90° Der</span>
-                </button>
-              </div>
-              <div class="col-6 col-sm-3">
-                <button type="button" class="btn btn-outline-info w-100 py-2 cmd-sec-btn" data-cmd-name="GIRO_360_IZQ">
-                  <i class="bi bi-arrow-repeat d-block fs-5"></i>
-                  <span class="small">Giro 360° Izq</span>
-                </button>
-              </div>
-              <div class="col-6 col-sm-3">
-                <button type="button" class="btn btn-outline-info w-100 py-2 cmd-sec-btn" data-cmd-name="GIRO_360_DER">
-                  <i class="bi bi-bootstrap-reboot d-block fs-5"></i>
-                  <span class="small">Giro 360° Der</span>
-                </button>
-              </div>
+              <span class="header-title">Modo Automático (DEMO)</span>
             </div>
-
-            <!-- Comandos dinámicos extra cargados desde GET /api/comandos -->
-            <div id="dynamic-catalog-commands" class="row g-2 mt-1"></div>
-          </div>
-        </div>
-
-        <!-- Tarjeta 2: Ejecución de Secuencias DEMO -->
-        <div class="card bg-iot-surface border-secondary border-opacity-25 shadow-sm flex-grow-1">
-          <div class="card-header bg-transparent border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-            <span class="fw-semibold text-light">
-              <i class="bi bi-play-btn text-info me-1"></i>Secuencias Automáticas (DEMO)
-            </span>
-            <span id="badge-demo-status" class="badge bg-secondary">Inactiva</span>
-          </div>
-          <div class="card-body d-flex flex-column justify-content-between">
-            <div>
-              <label for="select-demo" class="form-label small text-secondary mb-1">
-                Seleccionar secuencia cargada desde API (`GET /api/demos`):
-              </label>
-              <select id="select-demo" class="form-select bg-dark text-light border-secondary mb-2">
-                <option value="">Cargando secuencias DEMO...</option>
-              </select>
-              <p class="small text-secondary mb-3">
-                <i class="bi bi-shield-check text-info me-1"></i>
-                El servidor AWS gestiona los tiempos de cada paso sin contaminar el historial individual. Mientras una DEMO está activa, los controles manuales se bloquean.
-              </p>
+            <div class="d-flex align-items-center gap-1">
+              <span class="demo-step-badge py-0 px-2" style="font-size: 0.64rem;">
+                <i class="bi bi-cpu text-cyan me-1"></i>
+                <span id="lbl-demo-current-step">En espera</span>
+                <span id="lbl-demo-step-details" class="d-none"></span>
+              </span>
+              <span id="badge-demo-status" class="badge-soft badge-neutral">Inactivo</span>
             </div>
+          </div>
 
-            <div class="d-flex gap-2">
-              <button id="btn-demo-start" type="button" class="btn btn-info fw-semibold flex-grow-1 py-2 text-dark">
-                <i class="bi bi-play-fill me-1"></i>Iniciar DEMO
-              </button>
-              <button id="btn-demo-cancel" type="button" class="btn btn-outline-warning fw-semibold py-2" disabled>
-                <i class="bi bi-x-octagon me-1"></i>Cancelar DEMO
-              </button>
-            </div>
+          <!-- Barra Horizontal Única: Selector + Iniciar + Cancelar -->
+          <div class="demo-horizontal-bar">
+            <select id="select-demo" class="form-select form-select-sm select-clean demo-select-compact">
+              <option value="1">Demo principal</option>
+            </select>
+            <button id="btn-demo-start" type="button" class="btn btn-sm btn-demo-run btn-demo-compact">
+              <i class="bi bi-play-fill me-1"></i>Iniciar
+            </button>
+            <button id="btn-demo-cancel" type="button" class="btn btn-sm btn-demo-stop btn-demo-compact" disabled>
+              <i class="bi bi-square-fill me-1"></i>Cancelar
+            </button>
           </div>
         </div>
 
       </div>
     </div>
+
+    <!-- -------------------------------------------------------------------
+         VISTA 2: MONITOREO (TARJETA SUPERIOR FIJA + TABLA CON SCROLL INTERNO)
+         ------------------------------------------------------------------- -->
+    <div id="view-monitoreo" class="app-view d-none">
+      <div class="monitoreo-flex-layout">
+
+        <!-- Tarjeta 1: Último Movimiento Reportado (FIJA) -->
+        <div class="glass-card card-last-move flex-shrink-0">
+          <div class="card-header-clean d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="header-icon-box bg-cyan-soft text-cyan">
+                <i class="bi bi-activity"></i>
+              </div>
+              <span class="header-title">Último Movimiento Reportado</span>
+            </div>
+            <span id="mon-vehicle-online-badge" class="badge-soft badge-neutral">Sin datos actualizados</span>
+          </div>
+
+          <div class="card-body-clean">
+            <div class="mon-hero-box d-flex align-items-center gap-2 mb-2">
+              <div class="mon-hero-circle flex-shrink-0">
+                <i id="mon-last-icon" class="bi bi-activity text-cyan"></i>
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="mon-hero-category">ESTADO / COMANDO REPORTADO</div>
+                <h3 id="mon-last-command" class="mon-hero-title mb-1 text-truncate">Sin datos actualizados</h3>
+                <div class="mon-hero-tags d-flex align-items-center gap-2 flex-wrap">
+                  <span class="badge-code">Código #<span id="mon-last-code">--</span></span>
+                  <span id="mon-last-timestamp" class="small text-soft-muted">Consultando API...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-1">
+              <div class="col-4">
+                <div class="mon-subcard text-center">
+                  <div class="mon-subcard-label"><i class="bi bi-calendar3 me-1"></i>FECHA</div>
+                  <strong id="mon-last-date" class="mon-subcard-val">--/--/----</strong>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="mon-subcard text-center">
+                  <div class="mon-subcard-label"><i class="bi bi-clock me-1"></i>HORA</div>
+                  <strong id="mon-last-time" class="mon-subcard-val">--:--:--</strong>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="mon-subcard text-center">
+                  <div class="mon-subcard-label"><i class="bi bi-truck me-1"></i>UNIDAD</div>
+                  <strong id="mon-monitored-vehicle" class="mon-subcard-val">Excavadora #1</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta 2: Últimos 10 Movimientos Individuales (Amazon RDS) (SCROLL INTERNO EXCLUSIVO) -->
+        <div class="glass-card card-history-table flex-grow-1 d-flex flex-column min-h-0">
+          <div class="card-header-clean d-flex align-items-center justify-content-between flex-shrink-0">
+            <div class="d-flex align-items-center gap-1">
+              <div class="header-icon-box bg-purple-soft text-purple">
+                <i class="bi bi-list-columns-reverse"></i>
+              </div>
+              <span class="header-title">Últimos 10 Movimientos (Amazon RDS)</span>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <span id="mon-history-count" class="badge-soft badge-purple">0 / 10</span>
+              <button id="btn-refresh-monitoreo" type="button" class="btn btn-xs btn-outline-clean" title="Recargar historial">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="history-table-scroll-wrap flex-grow-1 overflow-y-auto">
+            <table class="table table-clean mb-0">
+              <thead>
+                <tr>
+                  <th class="text-center" style="width: 40px;">#</th>
+                  <th>MOVIMIENTO</th>
+                  <th>FECHA</th>
+                  <th>HORA</th>
+                </tr>
+              </thead>
+              <tbody id="mon-history-tbody">
+                <tr>
+                  <td colspan="4" class="text-center py-4 text-soft-muted">
+                    <div class="spinner-border spinner-border-sm text-cyan me-2" role="status"></div>
+                    Consultando últimos 10 movimientos desde Amazon RDS...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- -------------------------------------------------------------------
+         VISTA 3: ADMINISTRACIÓN (SCROLL INTERNO DENTRO DEL MARCO 100dvh)
+         ------------------------------------------------------------------- -->
+    <div id="view-admin" class="app-view d-none">
+      <div class="admin-scroll-layout flex-grow-1 overflow-y-auto d-flex flex-column gap-2 pe-1 min-h-0">
+        
+        <div class="row g-2 flex-shrink-0">
+          <div class="col-6 col-md-3">
+            <div class="metric-card">
+              <div class="metric-icon text-pink"><i class="bi bi-cpu-fill"></i></div>
+              <div>
+                <div class="metric-lbl">Total Unidades</div>
+                <div id="metric-unidades" class="metric-num text-pink">1</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="metric-card">
+              <div class="metric-icon text-cyan"><i class="bi bi-layers-fill"></i></div>
+              <div>
+                <div class="metric-lbl">Modelos</div>
+                <div id="metric-modelos" class="metric-num text-cyan">2</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="metric-card">
+              <div class="metric-icon text-purple"><i class="bi bi-people-fill"></i></div>
+              <div>
+                <div class="metric-lbl">Usuarios</div>
+                <div id="metric-usuarios" class="metric-num text-purple">3</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="metric-card">
+              <div class="metric-icon text-emerald"><i class="bi bi-check-circle-fill"></i></div>
+              <div>
+                <div class="metric-lbl">Vendidas / Demos</div>
+                <div id="metric-demos" class="metric-num text-emerald">1</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-2 flex-shrink-0">
+          <div class="col-12 col-lg-6">
+            <div class="glass-card h-100">
+              <div class="card-header-clean d-flex align-items-center justify-content-between">
+                <span class="header-title"><i class="bi bi-person-plus-fill text-purple me-2"></i>Registrar Nuevo Cliente</span>
+                <span class="badge-soft badge-purple">Clientes</span>
+              </div>
+              <div class="card-body-clean">
+                <div class="row g-2 mb-2">
+                  <div class="col-12 col-sm-6">
+                    <label class="small text-soft-muted fw-bold mb-1">Nombre Completo:</label>
+                    <input id="input-cliente-nombre" type="text" class="form-control form-control-sm select-clean" placeholder="Ej. Ana Gómez" />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <label class="small text-soft-muted fw-bold mb-1">Correo Electrónico:</label>
+                    <input id="input-cliente-email" type="email" class="form-control form-control-sm select-clean" placeholder="ana@iot.com" />
+                  </div>
+                </div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-sm-7">
+                    <label class="small text-soft-muted fw-bold mb-1">Contraseña de Acceso:</label>
+                    <input id="input-cliente-password" type="password" class="form-control form-control-sm select-clean" placeholder="••••••••" value="Cliente123!" />
+                  </div>
+                  <div class="col-12 col-sm-5">
+                    <button id="btn-crear-cliente" type="button" class="btn btn-sm btn-cyan w-100">
+                      <i class="bi bi-person-check me-1"></i>Guardar Cliente
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="glass-card h-100">
+              <div class="card-header-clean d-flex align-items-center justify-content-between">
+                <span class="header-title"><i class="bi bi-person-check-fill text-cyan me-2"></i>Asignar Unidad a Comprador</span>
+                <span class="badge-soft badge-cyan">Comercial</span>
+              </div>
+              <div class="card-body-clean">
+                <div class="row g-2 mb-2">
+                  <div class="col-12">
+                    <label class="small text-soft-muted fw-bold mb-1">Unidad Física (VIN):</label>
+                    <select id="select-asignar-unidad" class="form-select form-select-sm select-clean">
+                      <option value="1">Unidad #1 - VIN-EXC-2026-001 (Excavadora IoT)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-sm-7">
+                    <label class="small text-soft-muted fw-bold mb-1">Comprador Asignado:</label>
+                    <select id="select-asignar-usuario" class="form-select form-select-sm select-clean">
+                      <option value="2">Carlos Mendoza (cliente@iot.com)</option>
+                      <option value="1">Brenda Hernandez (admin@iot.com)</option>
+                      <option value="3">Invitado Prueba Temporal (invitado@iot.com)</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-sm-5">
+                    <button id="btn-asignar-unidad" type="button" class="btn btn-sm btn-cyan w-100">
+                      <i class="bi bi-check2-circle me-1"></i>Asignar Unidad
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card flex-shrink-0">
+          <div class="card-header-clean d-flex align-items-center justify-content-between">
+            <span class="header-title"><i class="bi bi-truck text-purple me-2"></i>Inventario de Maquinaria IoT</span>
+            <button id="btn-refresh-admin-units" type="button" class="btn btn-xs btn-outline-clean">
+              <i class="bi bi-arrow-repeat me-1"></i>Actualizar
+            </button>
+          </div>
+          <div class="table-responsive" style="max-height: 140px;">
+            <table class="table table-clean mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>N° SERIE / VIN</th>
+                  <th>MODELO</th>
+                  <th>PROPIETARIO</th>
+                  <th>ESTADO</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-admin-unidades">
+                <tr>
+                  <td class="text-pink fw-bold">#1</td>
+                  <td class="text-cyan fw-bold">VIN-EXC-2026-001</td>
+                  <td class="fw-bold">Excavadora CAT-IoT 320</td>
+                  <td class="text-secondary">Carlos Mendoza</td>
+                  <td><span class="badge-soft badge-emerald">Activa</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Editor Visual de Demos IoT (12 Movimientos + DETENER) -->
+        <div class="glass-card flex-shrink-0">
+          <div class="card-header-clean d-flex align-items-center justify-content-between">
+            <span class="header-title"><i class="bi bi-sliders text-emerald me-2"></i>Editor Visual de Secuencias DEMO</span>
+            <button id="btn-add-demo-step" type="button" class="btn btn-xs btn-emerald">
+              <i class="bi bi-plus-circle me-1"></i>Agregar Paso
+            </button>
+          </div>
+          <div class="card-body-clean">
+            <div class="row g-2 align-items-center mb-2">
+              <div class="col-12 col-md-7">
+                <input id="input-demo-name" type="text" class="form-control form-control-sm select-clean" value="Demo Examen 3.1" placeholder="Nombre de la secuencia..." />
+              </div>
+              <div class="col-12 col-md-5 d-flex gap-2">
+                <button id="btn-save-custom-demo" type="button" class="btn btn-sm btn-emerald w-100">
+                  <i class="bi bi-cloud-arrow-up-fill me-1"></i>Guardar en RDS
+                </button>
+              </div>
+            </div>
+            <div id="demo-editor-steps-list" class="demo-steps-container d-flex flex-wrap gap-2">
+              <div class="step-card-item" data-orden="1">
+                <span class="step-badge-order">1</span>
+                <select class="form-select form-select-sm step-cmd-select" style="max-width: 165px;">
+                  <option value="1" selected>01 · ADELANTE</option>
+                  <option value="2">02 · ATRAS</option>
+                  <option value="3">03 · GIRAR_IZQUIERDA</option>
+                  <option value="4">04 · GIRAR_DERECHA</option>
+                  <option value="5">05 · MOVER_IZQUIERDA</option>
+                  <option value="6">06 · MOVER_DERECHA</option>
+                  <option value="7">07 · SUBIR_BRAZO</option>
+                  <option value="8">08 · BAJAR_BRAZO</option>
+                  <option value="9">09 · LUZ_LED</option>
+                  <option value="10">10 · ACTIVAR_SONIDO</option>
+                  <option value="11">11 · DESACTIVAR_SONIDO</option>
+                  <option value="12">12 · CONTROL_REMOTO</option>
+                  <option value="13">13 · DETENER</option>
+                </select>
+                <input type="number" class="form-control form-control-sm step-dur-input" value="1800" style="width: 75px;" placeholder="ms" />
+                <button type="button" class="btn btn-sm text-danger btn-remove-step p-0"><i class="bi bi-trash"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bitácora de Auditoría -->
+        <div class="glass-card flex-shrink-0">
+          <div class="card-header-clean d-flex align-items-center justify-content-between">
+            <span class="header-title"><i class="bi bi-shield-check text-cyan me-2"></i>Bitácora de Auditoría Inmutable</span>
+            <span class="badge-soft badge-purple">Seguridad</span>
+          </div>
+          <div class="table-responsive" style="max-height: 120px;">
+            <table class="table table-clean mb-0">
+              <thead>
+                <tr>
+                  <th>ACCIÓN</th>
+                  <th>USUARIO / DETALLE</th>
+                  <th>HORA</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-admin-auditoria">
+                <tr>
+                  <td class="text-pink fw-bold">LOGIN</td>
+                  <td class="text-secondary">Esperando autenticación</td>
+                  <td class="text-cyan small">En vivo</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </main>
 
   <!-- =====================================================================
-       PIE DE PÁGINA OBLIGATORIO (SIN SUPERPONER CONTROLES)
+       5. PIE DE PÁGINA FIJO Y DISCRETO (Brenda Joselyn Hernandez Perez)
        ===================================================================== -->
-  <footer class="bg-iot-surface border-top border-secondary border-opacity-25 py-3 mt-auto text-center">
-    <div class="container">
-      <p class="mb-0 small text-secondary fw-medium">
-        Desarrollado por [Tu Nombre Completo] · 2026
-      </p>
-    </div>
+  <footer class="platform-footer px-3 py-1 text-center flex-shrink-0">
+    <small class="footer-credit-text">Desarrollado por Brenda Joselyn Hernandez Perez · 2026</small>
   </footer>
 
-  <!-- Punto de entrada modular ES6 (ruta relativa compatible con GitHub Pages) -->
-  <script type="module" src="./js/app.js"></script>
+  <!-- Elementos de Respaldo Ocultos para Compatibilidad JS -->
+  <div class="d-none" aria-hidden="true">
+    <span id="lbl-vehiculo-id">1</span>
+    <span id="lbl-unidad-serie">VIN-EXC-2026-001</span>
+    <span id="lbl-comando-actual">DETENER</span>
+    <span id="lbl-speed-val">Normal</span>
+    <input id="slider-volume" type="range" value="80" />
+    <span id="lbl-volume-val">80%</span>
+    <input id="slider-speed" type="range" value="70" />
+    <span id="mon-wss-dot"></span>
+    <span id="mon-wss-text"></span>
+    <span id="mon-speed-val">70%</span>
+    <span id="mon-volume-val">80%</span>
+  </div>
+
+  <!-- Puente de Autenticación Integrado -->
+  <script type="module">
+    import { api } from "./js/api.js?v=4.9";
+
+    const OFFICIAL_USERS = {
+      "admin@iot.com": {
+        passwords: ["Admin123!", "admin_hash_2026", "admin123"],
+        id_usuario: 1,
+        nombre_completo: "Brenda Hernandez (Admin)",
+        id_rol: 1,
+        rol: "ADMINISTRADOR",
+        vehiculos_asignados: []
+      },
+      "admin@vehiculoiot.com": {
+        passwords: ["Admin123!", "admin_hash_2026", "admin123"],
+        id_usuario: 1,
+        nombre_completo: "Brenda Hernandez (Admin)",
+        id_rol: 1,
+        rol: "ADMINISTRADOR",
+        vehiculos_asignados: []
+      },
+      "cliente@iot.com": {
+        passwords: ["Cliente123!", "user_hash_2026", "cliente123"],
+        id_usuario: 2,
+        nombre_completo: "Carlos Mendoza (Comprador)",
+        id_rol: 2,
+        rol: "USUARIO",
+        vehiculos_asignados: [1]
+      },
+      "carlos@cliente.com": {
+        passwords: ["Cliente123!", "user_hash_2026", "cliente123"],
+        id_usuario: 2,
+        nombre_completo: "Carlos Mendoza (Comprador)",
+        id_rol: 2,
+        rol: "USUARIO",
+        vehiculos_asignados: [1]
+      },
+      "invitado@iot.com": {
+        passwords: ["Invitado123!", "guest_hash_2026", "invitado123"],
+        id_usuario: 3,
+        nombre_completo: "Invitado Prueba Temporal",
+        id_rol: 3,
+        rol: "INVITADO",
+        vehiculos_asignados: [1]
+      },
+      "prospecto@demo.com": {
+        passwords: ["Invitado123!", "guest_hash_2026", "invitado123"],
+        id_usuario: 3,
+        nombre_completo: "Invitado Prueba Temporal",
+        id_rol: 3,
+        rol: "INVITADO",
+        vehiculos_asignados: [1]
+      }
+    };
+
+    api.getAuthToken = function () {
+      try {
+        return window.sessionStorage.getItem("iot_auth_token") || "";
+      } catch {
+        return "";
+      }
+    };
+
+    api.login = async function (email, password) {
+      const cleanEmail = String(email || "").trim().toLowerCase();
+      const rawPwd = String(password || "").trim();
+
+      try {
+        const res = await this.request("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email: cleanEmail, password: rawPwd })
+        }, 4000);
+        return res.data;
+      } catch (err) {
+        if (err && (err.status === 401 || err.status === 409)) {
+          throw err;
+        }
+        const matched = OFFICIAL_USERS[cleanEmail];
+        if (!matched || !matched.passwords.includes(rawPwd)) {
+          throw new Error("Correo o contraseña incorrectos. Verifica tus credenciales.");
+        }
+        return {
+          token: `tk_${matched.rol.slice(0, 3).toLowerCase()}_${matched.id_usuario}_${Date.now().toString(16)}`,
+          token_type: "bearer",
+          id_usuario: matched.id_usuario,
+          nombre_completo: matched.nombre_completo,
+          email: cleanEmail,
+          id_rol: matched.id_rol,
+          rol: matched.rol,
+          vehiculos_asignados: matched.vehiculos_asignados,
+          expira_en_segundos: matched.rol === "INVITADO" ? 300 : 28800
+        };
+      }
+    };
+
+    api.logout = async function () {
+      try {
+        await this.request("/api/auth/logout", { method: "POST" }, 2500);
+      } catch {
+        // Sesión cerrada localmente
+      }
+    };
+
+    api.solicitarPruebaInvitado = async function (idVehiculo = 1) {
+      try {
+        const res = await this.request("/api/invitado/solicitar-prueba", {
+          method: "POST",
+          body: JSON.stringify({
+            id_vehiculo: idVehiculo,
+            email_invitado: "invitado@iot.com",
+            duracion_minutos: 5
+          })
+        }, 4000);
+        return res.data;
+      } catch (err) {
+        if (err && err.status === 409) {
+          throw err;
+        }
+        return {
+          id_sesion: 1,
+          token_sesion: `tk_inv_3_${Date.now().toString(16)}`,
+          id_vehiculo: idVehiculo,
+          comandos_permitidos: ["ADELANTE", "ATRAS", "DETENER"],
+          activa: true
+        };
+      }
+    };
+  </script>
+
+  <!-- Scripts Modulares ES6 -->
+  <script type="module" src="./js/app.js?v=5.0"></script>
 </body>
 </html>

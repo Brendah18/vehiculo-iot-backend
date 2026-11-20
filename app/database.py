@@ -1,7 +1,9 @@
 """
 Módulo de gestión de conexión a base de datos Amazon RDS for MySQL aplicando POO.
-Permite invocar Stored Procedures devolviendo diccionarios compatibles con Pydantic y FastAPI.
+Permite invocar Stored Procedures devolviendo diccionarios compatibles con Pydantic, FastAPI y WebSockets.
 """
+from datetime import date, datetime
+from decimal import Decimal
 import os
 from typing import Any, Dict, List, Tuple
 from dotenv import load_dotenv
@@ -48,12 +50,25 @@ class DatabaseConnection:
         except Error as exc:
             raise RuntimeError(f"Error de conexión a Amazon RDS: {exc}") from exc
 
+    @staticmethod
+    def _serialize_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        """Convierte objetos datetime/date/Decimal a tipos nativos serializables en JSON (para WebSocket)."""
+        clean: Dict[str, Any] = {}
+        for key, value in row.items():
+            if isinstance(value, (datetime, date)):
+                clean[key] = value.isoformat()
+            elif isinstance(value, Decimal):
+                clean[key] = float(value)
+            else:
+                clean[key] = value
+        return clean
+
     def call_procedure(
         self, sp_name: str, params: Tuple[Any, ...] = ()
     ) -> List[Dict[str, Any]]:
         """
         Ejecuta un Stored Procedure en MySQL/RDS (ej. sp_obtener_vehiculos) usando CALL
-        y retorna las filas en formato de diccionario (dictionary=True).
+        y retorna las filas en formato de diccionario (dictionary=True) serializable en JSON.
         """
         connection = self.get_connection()
         # 4. Configurar el cursor con dictionary=True para respuestas compatibles con Pydantic y FastAPI
@@ -64,12 +79,33 @@ class DatabaseConnection:
             for result in cursor.stored_results():
                 filas = result.fetchall()
                 if filas:
-                    resultados.extend(filas)
+                    resultados.extend(self._serialize_row(f) for f in filas)
             connection.commit()
             return resultados
         except Error as exc:
             connection.rollback()
             raise RuntimeError(f"Error al ejecutar SP '{sp_name}': {exc}") from exc
+        finally:
+            cursor.close()
+            connection.close()
+
+    def execute_query(
+        self, query: str, params: Tuple[Any, ...] = ()
+    ) -> List[Dict[str, Any]]:
+        """Ejecuta una consulta SQL segura (SELECT, INSERT, UPDATE) retornando diccionarios."""
+        connection = self.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        try:
+            cursor.execute(query, params)
+            if cursor.description:
+                filas = cursor.fetchall()
+                connection.commit()
+                return [self._serialize_row(f) for f in filas] if filas else []
+            connection.commit()
+            return [{"affected_rows": cursor.rowcount, "last_id": cursor.lastrowid}]
+        except Error as exc:
+            connection.rollback()
+            raise RuntimeError(f"Error al ejecutar query: {exc}") from exc
         finally:
             cursor.close()
             connection.close()
