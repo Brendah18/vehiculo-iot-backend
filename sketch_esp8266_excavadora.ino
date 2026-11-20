@@ -155,55 +155,55 @@ void activarCanalSeguro(int bitCanal, const String& nombreCmd, unsigned long dur
 // ==============================================================================
 // 7. MAPEO DE COMANDOS DEL CATÁLOGO RDS -> CANAL DEL 74HC595
 // ==============================================================================
-void procesarComando(String cmd, int codigo, unsigned long duracionMs) {
+void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
   cmd.trim();
   cmd.toUpperCase();
   cmd.replace(" ", "_");
 
-  // Detención prioritaria inmediata (código 13)
-  if (cmd == "DETENER" || cmd == "STOP" || codigo == 13) {
+  // 1. Detención prioritaria inmediata (DETENER / id 13 o 0)
+  if (cmd == "DETENER" || cmd == "STOP" || (cmd.length() == 0 && (idNum == 13 || idNum == 0))) {
     liberarSalidas("Comando DETENER recibido");
     return;
   }
 
-  // Catálogo oficial de los 12 Movimientos del Profesor (01..12)
-  if (cmd == "ADELANTE" || cmd == "AVANZAR" || codigo == 1) {
+  // 2. Mapeo 1 a 1 por código en TEXTO EXACTO (prioritario) o id_comando numérico (respaldo)
+  if (cmd == "ADELANTE" || (cmd.length() == 0 && idNum == 1)) {
     activarCanalSeguro(BIT_ADELANTE, "ADELANTE", duracionMs);
   }
-  else if (cmd == "ATRAS" || cmd == "ATRÁS" || cmd == "RETROCEDER" || codigo == 2) {
+  else if (cmd == "ATRAS" || cmd == "ATRÁS" || (cmd.length() == 0 && idNum == 2)) {
     activarCanalSeguro(BIT_ATRAS, "ATRAS", duracionMs);
   }
-  else if (cmd == "GIRAR_IZQUIERDA" || cmd == "IZQUIERDA" || codigo == 3) {
+  else if (cmd == "GIRAR_IZQUIERDA" || (cmd.length() == 0 && idNum == 3)) {
     activarCanalSeguro(BIT_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", duracionMs);
   }
-  else if (cmd == "GIRAR_DERECHA" || cmd == "DERECHA" || codigo == 4) {
+  else if (cmd == "GIRAR_DERECHA" || (cmd.length() == 0 && idNum == 4)) {
     activarCanalSeguro(BIT_GIRAR_DERECHA, "GIRAR_DERECHA", duracionMs);
   }
-  else if (cmd == "MOVER_IZQUIERDA" || cmd == "CABINA_IZQ" || codigo == 5) {
+  else if (cmd == "MOVER_IZQUIERDA" || (cmd.length() == 0 && idNum == 5)) {
     activarCanalSeguro(BIT_MOVER_IZQUIERDA, "MOVER_IZQUIERDA", duracionMs);
   }
-  else if (cmd == "MOVER_DERECHA" || cmd == "CABINA_DER" || codigo == 6) {
+  else if (cmd == "MOVER_DERECHA" || (cmd.length() == 0 && idNum == 6)) {
     activarCanalSeguro(BIT_MOVER_DERECHA, "MOVER_DERECHA", duracionMs);
   }
-  else if (cmd == "SUBIR_BRAZO" || codigo == 7) {
+  else if (cmd == "SUBIR_BRAZO" || (cmd.length() == 0 && idNum == 7)) {
     activarCanalSeguro(BIT_SUBIR_BRAZO, "SUBIR_BRAZO", duracionMs);
   }
-  else if (cmd == "BAJAR_BRAZO" || codigo == 8) {
+  else if (cmd == "BAJAR_BRAZO" || (cmd.length() == 0 && idNum == 8)) {
     activarCanalSeguro(BIT_BAJAR_BRAZO, "BAJAR_BRAZO", duracionMs);
   }
-  else if (cmd == "LUZ_LED" || cmd == "LUZ" || cmd == "LED" || codigo == 9) {
+  else if (cmd == "LUZ_LED" || (cmd.length() == 0 && idNum == 9)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
     activarCanalSeguro(BIT_LUZ_LED, "LUZ_LED", dur);
   }
-  else if (cmd == "ACTIVAR_SONIDO" || cmd == "SONIDO" || cmd == "CLAXON" || codigo == 10) {
+  else if (cmd == "ACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 10)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
     activarCanalSeguro(BIT_ACTIVAR_SONIDO, "ACTIVAR_SONIDO", dur);
   }
-  else if (cmd == "DESACTIVAR_SONIDO" || codigo == 11) {
+  else if (cmd == "DESACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 11)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
     activarCanalSeguro(BIT_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
   }
-  else if (cmd == "CONTROL_REMOTO" || codigo == 12) {
+  else if (cmd == "CONTROL_REMOTO" || (cmd.length() == 0 && idNum == 12)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
     activarCanalSeguro(BIT_CONTROL_REMOTO, "CONTROL_REMOTO", dur);
   }
@@ -311,8 +311,15 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       if (comando.length() == 0 && doc.containsKey("accion") && !doc["accion"].isNull()) {
         comando = String((const char*)doc["accion"]);
       }
-      if (codigo == -1 && doc.containsKey("codigo") && !doc["codigo"].isNull()) {
-        codigo = doc["codigo"].as<int>();
+      if (doc.containsKey("codigo") && !doc["codigo"].isNull()) {
+        if (doc["codigo"].is<const char*>()) {
+          if (comando.length() == 0) comando = String((const char*)doc["codigo"]);
+        } else if (codigo == -1) {
+          codigo = doc["codigo"].as<int>();
+        }
+      }
+      if (codigo == -1 && doc.containsKey("id_comando") && !doc["id_comando"].isNull()) {
+        codigo = doc["id_comando"].as<int>();
       }
       if (doc.containsKey("duracion_ms") && !doc["duracion_ms"].isNull()) {
         duracionMs = doc["duracion_ms"].as<unsigned long>();

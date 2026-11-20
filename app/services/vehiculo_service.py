@@ -203,8 +203,8 @@ class VehiculoService:
 
         # 3. Obtener estado actual y emitir por WebSocket al canal del vehículo
         estado_actual = self.repo.obtener_estado(id_vehiculo) or {}
-        nombre_cmd = str(estado_actual.get("comando") or "")
-        codigo_cmd = int(estado_actual.get("codigo") or id_comando)
+        nombre_cmd = str(estado_actual.get("comando") or "").strip().upper()
+        codigo_num = int(estado_actual.get("codigo") or id_comando)
 
         payload = {
             "evento": "MOVIMIENTO_INDIVIDUAL",
@@ -212,7 +212,8 @@ class VehiculoService:
             "origen": origen,
             "id_vehiculo": id_vehiculo,
             "id_comando": id_comando,
-            "codigo": codigo_cmd,
+            "codigo": nombre_cmd,
+            "codigo_num": codigo_num,
             "comando": nombre_cmd,
             "accion": nombre_cmd,
             "estado": estado_actual,
@@ -296,7 +297,9 @@ class VehiculoService:
                 self.repo.actualizar_estado(
                     id_vehiculo=id_vehiculo, id_comando=id_comando, conectado=True
                 )
-                estado_paso = self.repo.obtener_estado(id_vehiculo)
+                estado_paso = self.repo.obtener_estado(id_vehiculo) or {}
+                cmd_str = str(paso.get("comando") or estado_paso.get("comando") or nombre_paso).strip().upper()
+                cod_num = int(paso.get("codigo") or estado_paso.get("codigo") or id_comando)
 
                 await self.ws.broadcast_to_vehiculo(
                     id_vehiculo,
@@ -304,9 +307,12 @@ class VehiculoService:
                         "evento": "DEMO_PASO",
                         "id_demo": id_demo,
                         "id_vehiculo": id_vehiculo,
+                        "id_comando": id_comando,
                         "orden": orden,
-                        "comando": paso.get("comando") or (estado_paso or {}).get("comando"),
-                        "codigo": paso.get("codigo") or (estado_paso or {}).get("codigo"),
+                        "comando": cmd_str,
+                        "codigo": cmd_str,
+                        "codigo_num": cod_num,
+                        "accion": cmd_str,
                         "duracion_ms": duracion_ms,
                         "pausa_ms": pausa_ms,
                         "guardado_en_historial": False,
