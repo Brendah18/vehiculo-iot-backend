@@ -50,8 +50,8 @@ int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (Dirección OK)
 int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (Dirección OK)
 int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA (Dirección OK)
 int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA (Dirección OK)
-int CANAL_MOVER_IZQUIERDA   = 11;  // T11 -> MOVER IZQUIERDA / BRAZO ATRÁS (12 no respondía)
-int CANAL_MOVER_DERECHA     = 10;  // T10 -> MOVER DERECHA / BRAZO ENFRENTE
+int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> VOLTEAR IZQUIERDA (en lugar de 11 que iba recto atrás)
+int CANAL_MOVER_DERECHA     = 7;   // T7  -> MOVER DERECHA (en lugar de 10 que iba recto enfrente)
 int CANAL_SUBIR_BRAZO       = 8;   // T8  -> SUBIR BRAZO (confirmado)
 int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
@@ -66,11 +66,11 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS  = 2200; // Duración máx. si no llega DETENER al soltar
+const unsigned long DURACION_DEFECTO_MS  = 1200; // Duración máx. si no llega DETENER al soltar (evita que se pase de largo)
 const unsigned long DURACION_BRAZO_MS    = 3200; // Mayor tiempo y recorrido continuo para subir/bajar brazo
 const unsigned long DURACION_AUXILIAR_MS = 350;  // Pulso controlado (~350ms) para Luz/Sonido/Demo
 const unsigned long DURACION_MAXIMA_MS   = 5000; // Límite máximo de seguridad
-const unsigned long PAUSA_TRANSICION_MS  = 40;   // Pausa al cambiar dirección incompatible
+const unsigned long PAUSA_TRANSICION_MS  = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
 const unsigned long TIEMPO_RESET_BTN_MS  = 5000; // 5 segundos para resetear Wi-Fi (8.2)
 
 // ==============================================================================
