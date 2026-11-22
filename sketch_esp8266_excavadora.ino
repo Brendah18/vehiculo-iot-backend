@@ -29,9 +29,9 @@ const char* AP_PORTAL_NOMBRE = "Excavadora_IoT_Setup";
 // 2. PINES SEGUROS DEL NODEMCU -> DOS 74HC595 EN CASCADA
 //    (Conectar en el lado DERECHO de tu placa de expansión verde)
 // ==============================================================================
-#define PIN_CLOCK      D5   // GPIO14 -> Pin 11 (SHCP / SRCLK) de ambos 74HC595
-#define PIN_LATCH      D6   // GPIO12 -> Pin 12 (STCP / RCLK)  de ambos 74HC595
-#define PIN_DATA       D7   // GPIO13 -> Pin 14 (DS / SER)     del 1er 74HC595
+uint8_t PIN_CLOCK = D5;   // GPIO14 -> Pin 11 (SHCP / SRCLK) de ambos 74HC595
+uint8_t PIN_LATCH = D6;   // GPIO12 -> Pin 12 (STCP / RCLK)  de ambos 74HC595
+uint8_t PIN_DATA  = D7;   // GPIO13 -> Pin 14 (DS / SER)     del 1er 74HC595
 
 // Botón físico FLASH del NodeMCU (D3 / GPIO0): mantener 5 s a GND para reset Wi-Fi
 #define PIN_RESET_WIFI D3   // GPIO0  -> Mantener presionado 5 s para borrar Wi-Fi
@@ -46,18 +46,18 @@ const char* AP_PORTAL_NOMBRE = "Excavadora_IoT_Setup";
 //    Anota qué movimiento físico hace la excavadora en cada canal X (0..11)
 //    y actualiza el número correspondiente aquí abajo sin tocar el resto del código.
 // ==============================================================================
-int CANAL_ADELANTE          = 0;   // Q0  (Chip 1) -> 01. ADELANTE
-int CANAL_ATRAS             = 1;   // Q1  (Chip 1) -> 02. ATRÁS
-int CANAL_GIRAR_IZQUIERDA   = 2;   // Q2  (Chip 1) -> 03. GIRAR IZQUIERDA
-int CANAL_GIRAR_DERECHA     = 3;   // Q3  (Chip 1) -> 04. GIRAR DERECHA
-int CANAL_MOVER_IZQUIERDA   = 4;   // Q4  (Chip 1) -> 05. MOVER IZQUIERDA
-int CANAL_MOVER_DERECHA     = 5;   // Q5  (Chip 1) -> 06. MOVER DERECHA
-int CANAL_SUBIR_BRAZO       = 6;   // Q6  (Chip 1) -> 07. SUBIR BRAZO
-int CANAL_BAJAR_BRAZO       = 7;   // Q7  (Chip 1) -> 08. BAJAR BRAZO
-int CANAL_LUZ_LED           = 8;   // Q0  (Chip 2) -> 09. LUZ / LED
-int CANAL_ACTIVAR_SONIDO    = 9;   // Q1  (Chip 2) -> 10. ACTIVAR SONIDO
-int CANAL_DESACTIVAR_SONIDO = 10;  // Q2  (Chip 2) -> 11. DESACTIVAR SONIDO
-int CANAL_CONTROL_REMOTO    = 11;  // Q3  (Chip 2) -> 12. CONTROL REMOTO
+int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (si prefieres brazo/oruga 10, cambia a 10)
+int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (si prefieres brazo/oruga 11, cambia a 11)
+int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA
+int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA
+int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> VOLTEAR IZQUIERDA
+int CANAL_MOVER_DERECHA     = 9;   // T9  -> VOLTEAR DERECHA
+int CANAL_SUBIR_BRAZO       = 7;   // T7  -> GARRA ARRIBA
+int CANAL_BAJAR_BRAZO       = 8;   // T8  -> GARRA ABAJO
+int CANAL_LUZ_LED           = 13;  // T13 -> LUZ
+int CANAL_ACTIVAR_SONIDO    = 14;  // T14 -> SONIDO (activar/alternar)
+int CANAL_DESACTIVAR_SONIDO = 14;  // T14 -> SONIDO (alternar/apagar en el mismo botón)
+int CANAL_CONTROL_REMOTO    = 15;  // T15 -> DEMO / CONTROL REMOTO
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -383,11 +383,83 @@ void revisarComandosSerial() {
     return;
   }
 
-  // Modo prueba rápida de todos los canales 0..11 (~10 segundos total)
+  // Cambiar combinación de pines CLK/LATCH/DATA en vivo sin recompilar: C1..C6
+  if ((entrada.startsWith("C") || entrada.startsWith("c")) && entrada.length() == 2) {
+    int cNum = entrada.substring(1).toInt();
+    const uint8_t combos[6][3] = {
+      {D5, D6, D7}, {D5, D7, D6},
+      {D6, D5, D7}, {D6, D7, D5},
+      {D7, D5, D6}, {D7, D6, D5}
+    };
+    const char* nombres[6] = {
+      "Combo 1: CLK=D5, LATCH=D6, DATA=D7",
+      "Combo 2: CLK=D5, LATCH=D7, DATA=D6",
+      "Combo 3: CLK=D6, LATCH=D5, DATA=D7",
+      "Combo 4: CLK=D6, LATCH=D7, DATA=D5",
+      "Combo 5: CLK=D7, LATCH=D5, DATA=D6",
+      "Combo 6: CLK=D7, LATCH=D6, DATA=D5"
+    };
+    if (cNum >= 1 && cNum <= 6) {
+      PIN_CLOCK = combos[cNum - 1][0];
+      PIN_LATCH = combos[cNum - 1][1];
+      PIN_DATA  = combos[cNum - 1][2];
+      pinMode(PIN_CLOCK, OUTPUT);
+      pinMode(PIN_LATCH, OUTPUT);
+      pinMode(PIN_DATA, OUTPUT);
+      escribirRegistros595(0x0000);
+      Serial.print(F("[PINES] Activo -> "));
+      Serial.println(nombres[cNum - 1]);
+      Serial.println(F("Ahora escribe TEST_CANALES para probar del 0 al 11 uno por uno."));
+    }
+    return;
+  }
+
+  // Modo diagnóstico de pines D5/D6/D7: prueba las 6 combinaciones de CLK/LATCH/DATA con 0xFFFF
+  if (entrada.equalsIgnoreCase("TEST_PINES")) {
+    const uint8_t combos[6][3] = {
+      {D5, D6, D7}, {D5, D7, D6},
+      {D6, D5, D7}, {D6, D7, D5},
+      {D7, D5, D6}, {D7, D6, D5}
+    };
+    const char* nombres[6] = {
+      "Combo 1: CLK=D5, LATCH=D6, DATA=D7",
+      "Combo 2: CLK=D5, LATCH=D7, DATA=D6",
+      "Combo 3: CLK=D6, LATCH=D5, DATA=D7",
+      "Combo 4: CLK=D6, LATCH=D7, DATA=D5",
+      "Combo 5: CLK=D7, LATCH=D5, DATA=D6",
+      "Combo 6: CLK=D7, LATCH=D6, DATA=D5"
+    };
+    Serial.println(F("[TEST_PINES] Probando las 6 combinaciones en D5/D6/D7 (todos los focos ON)..."));
+    for (int i = 0; i < 6; i++) {
+      uint8_t c = combos[i][0], l = combos[i][1], d = combos[i][2];
+      pinMode(c, OUTPUT);
+      pinMode(l, OUTPUT);
+      pinMode(d, OUTPUT);
+      Serial.println(nombres[i]);
+      digitalWrite(l, LOW);
+      shiftOut(d, c, MSBFIRST, 0xFF);
+      shiftOut(d, c, MSBFIRST, 0xFF);
+      digitalWrite(l, HIGH);
+      delay(1500);
+      digitalWrite(l, LOW);
+      shiftOut(d, c, MSBFIRST, 0x00);
+      shiftOut(d, c, MSBFIRST, 0x00);
+      digitalWrite(l, HIGH);
+      delay(300);
+    }
+    pinMode(PIN_CLOCK, OUTPUT);
+    pinMode(PIN_LATCH, OUTPUT);
+    pinMode(PIN_DATA, OUTPUT);
+    escribirRegistros595(0x0000);
+    Serial.println(F("[TEST_PINES] Fin. Dime en que numero de Combo se prendieron los focos verdes."));
+    return;
+  }
+
+  // Modo prueba rápida de todos los canales 0..15 (~13 segundos total)
   if (entrada.equalsIgnoreCase("TEST_CANALES") || entrada.equalsIgnoreCase("ALL")) {
-    Serial.println(F("[TEST_CANALES] Apagando salidas e iniciando barrido canal 0 -> 11..."));
+    Serial.println(F("[TEST_CANALES] Apagando salidas e iniciando barrido canal 0 -> 15..."));
     liberarSalidas("Inicio TEST_CANALES");
-    for (int b = 0; b <= 11; b++) {
+    for (int b = 0; b <= 15; b++) {
       Serial.print(F("Activando canal physical "));
       Serial.println(b);
       escribirRegistros595((uint16_t)(1U << b));
@@ -454,7 +526,7 @@ void setup() {
   Serial.print(F("Vehiculo asignado:        ID "));
   Serial.println(ID_VEHICULO_PROPIO);
   Serial.println(F("Salidas 74HC595:          0x0000 (Estado seguro inicial)"));
-  Serial.println(F("Comandos Serial:          [TEST_CANALES] | [T0..T15] | [S] Stop | [R] Reset Wi-Fi"));
+  Serial.println(F("Comandos Serial:          [C1..C6] | [TEST_CANALES] | [T0..T15] | [S] | [R]"));
 
   // 2. Configurar WiFiManager (sin contraseñas fijas en código - 4.1)
   WiFi.mode(WIFI_STA);
