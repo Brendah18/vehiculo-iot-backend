@@ -57,7 +57,7 @@ int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = 13;  // T13 -> DEMO / CONTROL REMOTO (confirmado)
+int CANAL_CONTROL_REMOTO    = -1;  // Desactivado en hardware para que Ctrl. Remoto NO active la DEMO física
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -66,7 +66,7 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS  = 1500; // Duración máx. si no llega DETENER al soltar
+const unsigned long DURACION_DEFECTO_MS  = 2200; // Duración máx. si no llega DETENER al soltar
 const unsigned long DURACION_BRAZO_MS    = 3200; // Mayor tiempo y recorrido continuo para subir/bajar brazo
 const unsigned long DURACION_AUXILIAR_MS = 350;  // Pulso controlado (~350ms) para Luz/Sonido/Demo
 const unsigned long DURACION_MAXIMA_MS   = 5000; // Límite máximo de seguridad
@@ -207,8 +207,12 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     activarCanalSeguro(CANAL_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
   }
   else if (cmd == "CONTROL_REMOTO" || (cmd.length() == 0 && idNum == 12)) {
-    unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(CANAL_CONTROL_REMOTO, "CONTROL_REMOTO", dur);
+    if (CANAL_CONTROL_REMOTO >= 0 && CANAL_CONTROL_REMOTO <= 15) {
+      unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
+      activarCanalSeguro(CANAL_CONTROL_REMOTO, "CONTROL_REMOTO", dur);
+    } else {
+      liberarSalidas("CONTROL_REMOTO (sin DEMO fisica)");
+    }
   }
   else {
     // RN06: Descartar comandos desconocidos
