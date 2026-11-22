@@ -37,27 +37,27 @@ const char* AP_PORTAL_NOMBRE = "Excavadora_IoT_Setup";
 #define PIN_RESET_WIFI D3   // GPIO0  -> Mantener presionado 5 s para borrar Wi-Fi
 
 // ==============================================================================
-// 3. MAPA DE BITS (0..15) DE LOS DOS 74HC595 -> OPTOACOPLADORES PC817
+// 3. TABLA DE MAPEO DE CANALES FÍSICOS (0..11) -> OPTOACOPLADORES PC817
 //    Bits 0..7  = Q0..Q7 del 1er 74HC595 (el que recibe PIN_DATA)
 //    Bits 8..15 = Q0..Q7 del 2do 74HC595 (conectado en cascada por Q7')
 //
-//    TIP DE CALIBRACIÓN:
-//    En el Monitor Serie escribe T0, T1, T2... hasta T15 para activar 1 segundo
-//    cada canal y confirmar qué botón físico del control corresponde a cada bit.
-//    Luego ajusta estos números si algún cable quedó en otro canal.
+//    CALIBRACIÓN RÁPIDA EN 10 SEGUNDOS:
+//    En el Monitor Serie escribe: TEST_CANALES (o ALL)
+//    Anota qué movimiento físico hace la excavadora en cada canal X (0..11)
+//    y actualiza el número correspondiente aquí abajo sin tocar el resto del código.
 // ==============================================================================
-#define BIT_ADELANTE          0   // Q0  (Chip 1) -> 01. ADELANTE
-#define BIT_ATRAS             1   // Q1  (Chip 1) -> 02. ATRÁS
-#define BIT_GIRAR_IZQUIERDA   2   // Q2  (Chip 1) -> 03. GIRAR IZQUIERDA
-#define BIT_GIRAR_DERECHA     3   // Q3  (Chip 1) -> 04. GIRAR DERECHA
-#define BIT_MOVER_IZQUIERDA   4   // Q4  (Chip 1) -> 05. MOVER IZQUIERDA
-#define BIT_MOVER_DERECHA     5   // Q5  (Chip 1) -> 06. MOVER DERECHA
-#define BIT_SUBIR_BRAZO       6   // Q6  (Chip 1) -> 07. SUBIR BRAZO
-#define BIT_BAJAR_BRAZO       7   // Q7  (Chip 1) -> 08. BAJAR BRAZO
-#define BIT_LUZ_LED           8   // Q0  (Chip 2) -> 09. LUZ / LED
-#define BIT_ACTIVAR_SONIDO    9   // Q1  (Chip 2) -> 10. ACTIVAR SONIDO
-#define BIT_DESACTIVAR_SONIDO 10  // Q2  (Chip 2) -> 11. DESACTIVAR SONIDO
-#define BIT_CONTROL_REMOTO    11  // Q3  (Chip 2) -> 12. CONTROL REMOTO
+int CANAL_ADELANTE          = 0;   // Q0  (Chip 1) -> 01. ADELANTE
+int CANAL_ATRAS             = 1;   // Q1  (Chip 1) -> 02. ATRÁS
+int CANAL_GIRAR_IZQUIERDA   = 2;   // Q2  (Chip 1) -> 03. GIRAR IZQUIERDA
+int CANAL_GIRAR_DERECHA     = 3;   // Q3  (Chip 1) -> 04. GIRAR DERECHA
+int CANAL_MOVER_IZQUIERDA   = 4;   // Q4  (Chip 1) -> 05. MOVER IZQUIERDA
+int CANAL_MOVER_DERECHA     = 5;   // Q5  (Chip 1) -> 06. MOVER DERECHA
+int CANAL_SUBIR_BRAZO       = 6;   // Q6  (Chip 1) -> 07. SUBIR BRAZO
+int CANAL_BAJAR_BRAZO       = 7;   // Q7  (Chip 1) -> 08. BAJAR BRAZO
+int CANAL_LUZ_LED           = 8;   // Q0  (Chip 2) -> 09. LUZ / LED
+int CANAL_ACTIVAR_SONIDO    = 9;   // Q1  (Chip 2) -> 10. ACTIVAR SONIDO
+int CANAL_DESACTIVAR_SONIDO = 10;  // Q2  (Chip 2) -> 11. DESACTIVAR SONIDO
+int CANAL_CONTROL_REMOTO    = 11;  // Q3  (Chip 2) -> 12. CONTROL REMOTO
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -66,8 +66,8 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS  = 1500; // Duración para movimiento manual
-const unsigned long DURACION_AUXILIAR_MS = 600;  // Pulsación para botón de luz/sonido
+const unsigned long DURACION_DEFECTO_MS  = 1500; // Duración máx. si no llega DETENER al soltar
+const unsigned long DURACION_AUXILIAR_MS = 300;  // Pulso controlado (~300ms) para Luz/Sonido/Ctrl
 const unsigned long DURACION_MAXIMA_MS   = 5000; // Límite máximo de seguridad
 const unsigned long PAUSA_TRANSICION_MS  = 40;   // Pausa al cambiar dirección incompatible
 const unsigned long TIEMPO_RESET_BTN_MS  = 5000; // 5 segundos para resetear Wi-Fi (8.2)
@@ -168,44 +168,44 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
 
   // 2. Mapeo 1 a 1 por código en TEXTO EXACTO (prioritario) o id_comando numérico (respaldo)
   if (cmd == "ADELANTE" || (cmd.length() == 0 && idNum == 1)) {
-    activarCanalSeguro(BIT_ADELANTE, "ADELANTE", duracionMs);
+    activarCanalSeguro(CANAL_ADELANTE, "ADELANTE", duracionMs);
   }
   else if (cmd == "ATRAS" || cmd == "ATRÁS" || (cmd.length() == 0 && idNum == 2)) {
-    activarCanalSeguro(BIT_ATRAS, "ATRAS", duracionMs);
+    activarCanalSeguro(CANAL_ATRAS, "ATRAS", duracionMs);
   }
   else if (cmd == "GIRAR_IZQUIERDA" || (cmd.length() == 0 && idNum == 3)) {
-    activarCanalSeguro(BIT_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", duracionMs);
+    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", duracionMs);
   }
   else if (cmd == "GIRAR_DERECHA" || (cmd.length() == 0 && idNum == 4)) {
-    activarCanalSeguro(BIT_GIRAR_DERECHA, "GIRAR_DERECHA", duracionMs);
+    activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", duracionMs);
   }
   else if (cmd == "MOVER_IZQUIERDA" || (cmd.length() == 0 && idNum == 5)) {
-    activarCanalSeguro(BIT_MOVER_IZQUIERDA, "MOVER_IZQUIERDA", duracionMs);
+    activarCanalSeguro(CANAL_MOVER_IZQUIERDA, "MOVER_IZQUIERDA", duracionMs);
   }
   else if (cmd == "MOVER_DERECHA" || (cmd.length() == 0 && idNum == 6)) {
-    activarCanalSeguro(BIT_MOVER_DERECHA, "MOVER_DERECHA", duracionMs);
+    activarCanalSeguro(CANAL_MOVER_DERECHA, "MOVER_DERECHA", duracionMs);
   }
   else if (cmd == "SUBIR_BRAZO" || (cmd.length() == 0 && idNum == 7)) {
-    activarCanalSeguro(BIT_SUBIR_BRAZO, "SUBIR_BRAZO", duracionMs);
+    activarCanalSeguro(CANAL_SUBIR_BRAZO, "SUBIR_BRAZO", duracionMs);
   }
   else if (cmd == "BAJAR_BRAZO" || (cmd.length() == 0 && idNum == 8)) {
-    activarCanalSeguro(BIT_BAJAR_BRAZO, "BAJAR_BRAZO", duracionMs);
+    activarCanalSeguro(CANAL_BAJAR_BRAZO, "BAJAR_BRAZO", duracionMs);
   }
   else if (cmd == "LUZ_LED" || (cmd.length() == 0 && idNum == 9)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(BIT_LUZ_LED, "LUZ_LED", dur);
+    activarCanalSeguro(CANAL_LUZ_LED, "LUZ_LED", dur);
   }
   else if (cmd == "ACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 10)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(BIT_ACTIVAR_SONIDO, "ACTIVAR_SONIDO", dur);
+    activarCanalSeguro(CANAL_ACTIVAR_SONIDO, "ACTIVAR_SONIDO", dur);
   }
   else if (cmd == "DESACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 11)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(BIT_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
+    activarCanalSeguro(CANAL_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
   }
   else if (cmd == "CONTROL_REMOTO" || (cmd.length() == 0 && idNum == 12)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(BIT_CONTROL_REMOTO, "CONTROL_REMOTO", dur);
+    activarCanalSeguro(CANAL_CONTROL_REMOTO, "CONTROL_REMOTO", dur);
   }
   else {
     // RN06: Descartar comandos desconocidos
@@ -220,6 +220,7 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   switch (type) {
     case WStype_DISCONNECTED:
+      digitalWrite(LED_BUILTIN, HIGH); // Apagar LED azul (activo en LOW)
       if (wsConectado) {
         Serial.println(F("[WSS] Desconectado del servidor AWS. Pasando a estado seguro."));
       }
@@ -230,6 +231,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
     case WStype_CONNECTED:
       wsConectado = true;
+      digitalWrite(LED_BUILTIN, LOW); // Encender LED azul fijo = conectado a AWS WSS
       Serial.print(F("[WSS] Conectado exitosamente a wss://"));
       Serial.print(WS_HOST);
       Serial.print(F(":"));
@@ -381,6 +383,22 @@ void revisarComandosSerial() {
     return;
   }
 
+  // Modo prueba rápida de todos los canales 0..11 (~10 segundos total)
+  if (entrada.equalsIgnoreCase("TEST_CANALES") || entrada.equalsIgnoreCase("ALL")) {
+    Serial.println(F("[TEST_CANALES] Apagando salidas e iniciando barrido canal 0 -> 11..."));
+    liberarSalidas("Inicio TEST_CANALES");
+    for (int b = 0; b <= 11; b++) {
+      Serial.print(F("Activando canal physical "));
+      Serial.println(b);
+      escribirRegistros595((uint16_t)(1U << b));
+      delay(650);
+      escribirRegistros595(0x0000);
+      delay(200);
+    }
+    Serial.println(F("[TEST_CANALES] Barrido completo. Todas las salidas en 0x0000."));
+    return;
+  }
+
   // Modo prueba/calibración de canales: escribir T0..T15 activa ese bit 1 segundo
   if ((entrada.startsWith("T") || entrada.startsWith("t")) && entrada.length() >= 2) {
     int bitPrueba = entrada.substring(1).toInt();
@@ -420,8 +438,10 @@ void setup() {
   pinMode(PIN_LATCH, OUTPUT);
   escribirRegistros595(0x0000); // Estado seguro inmediato al encender
 
-  // Botón de reset Wi-Fi con pull-up interno
+  // Botón de reset Wi-Fi con pull-up interno y LED de estado WSS
   pinMode(PIN_RESET_WIFI, INPUT_PULLUP);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH); // Apagado hasta conectar WSS
 
   Serial.begin(115200);
   delay(200);
@@ -434,7 +454,7 @@ void setup() {
   Serial.print(F("Vehiculo asignado:        ID "));
   Serial.println(ID_VEHICULO_PROPIO);
   Serial.println(F("Salidas 74HC595:          0x0000 (Estado seguro inicial)"));
-  Serial.println(F("Comandos Serial:          [R] Reset Wi-Fi | [S] Stop | [T0..T15] Test bit"));
+  Serial.println(F("Comandos Serial:          [TEST_CANALES] | [T0..T15] | [S] Stop | [R] Reset Wi-Fi"));
 
   // 2. Configurar WiFiManager (sin contraseñas fijas en código - 4.1)
   WiFi.mode(WIFI_STA);
@@ -473,7 +493,6 @@ void setup() {
   webSocket.beginSSL(WS_HOST, WS_PORT, WS_PATH);
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(3000);
-  webSocket.enableHeartbeat(15000, 3000, 2);
 }
 
 // ==============================================================================
