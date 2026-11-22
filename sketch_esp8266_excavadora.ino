@@ -46,18 +46,18 @@ uint8_t PIN_DATA  = D7;   // GPIO13 -> Pin 14 (DS / SER)     del 1er 74HC595
 //    Anota qué movimiento físico hace la excavadora en cada canal X (0..11)
 //    y actualiza el número correspondiente aquí abajo sin tocar el resto del código.
 // ==============================================================================
-int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (si prefieres brazo/oruga 10, cambia a 10)
-int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (si prefieres brazo/oruga 11, cambia a 11)
-int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA
-int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA
-int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> VOLTEAR IZQUIERDA
-int CANAL_MOVER_DERECHA     = 9;   // T9  -> VOLTEAR DERECHA
-int CANAL_SUBIR_BRAZO       = 7;   // T7  -> GARRA ARRIBA
-int CANAL_BAJAR_BRAZO       = 8;   // T8  -> GARRA ABAJO
-int CANAL_LUZ_LED           = 13;  // T13 -> LUZ
-int CANAL_ACTIVAR_SONIDO    = 14;  // T14 -> SONIDO (activar/alternar)
-int CANAL_DESACTIVAR_SONIDO = 14;  // T14 -> SONIDO (alternar/apagar en el mismo botón)
-int CANAL_CONTROL_REMOTO    = 15;  // T15 -> DEMO / CONTROL REMOTO
+int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (Dirección OK)
+int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (Dirección OK)
+int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA (Dirección OK)
+int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA (Dirección OK)
+int CANAL_MOVER_IZQUIERDA   = 11;  // T11 -> MOVER IZQUIERDA / BRAZO ATRÁS (12 no respondía)
+int CANAL_MOVER_DERECHA     = 10;  // T10 -> MOVER DERECHA / BRAZO ENFRENTE
+int CANAL_SUBIR_BRAZO       = 8;   // T8  -> SUBIR BRAZO (confirmado)
+int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
+int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
+int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
+int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
+int CANAL_CONTROL_REMOTO    = 13;  // T13 -> DEMO / CONTROL REMOTO (confirmado)
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -67,7 +67,8 @@ const bool LOGICA_INVERTIDA = false;
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
 const unsigned long DURACION_DEFECTO_MS  = 1500; // Duración máx. si no llega DETENER al soltar
-const unsigned long DURACION_AUXILIAR_MS = 300;  // Pulso controlado (~300ms) para Luz/Sonido/Ctrl
+const unsigned long DURACION_BRAZO_MS    = 3200; // Mayor tiempo y recorrido continuo para subir/bajar brazo
+const unsigned long DURACION_AUXILIAR_MS = 350;  // Pulso controlado (~350ms) para Luz/Sonido/Demo
 const unsigned long DURACION_MAXIMA_MS   = 5000; // Límite máximo de seguridad
 const unsigned long PAUSA_TRANSICION_MS  = 40;   // Pausa al cambiar dirección incompatible
 const unsigned long TIEMPO_RESET_BTN_MS  = 5000; // 5 segundos para resetear Wi-Fi (8.2)
@@ -186,10 +187,12 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     activarCanalSeguro(CANAL_MOVER_DERECHA, "MOVER_DERECHA", duracionMs);
   }
   else if (cmd == "SUBIR_BRAZO" || (cmd.length() == 0 && idNum == 7)) {
-    activarCanalSeguro(CANAL_SUBIR_BRAZO, "SUBIR_BRAZO", duracionMs);
+    unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_BRAZO_MS;
+    activarCanalSeguro(CANAL_SUBIR_BRAZO, "SUBIR_BRAZO", dur);
   }
   else if (cmd == "BAJAR_BRAZO" || (cmd.length() == 0 && idNum == 8)) {
-    activarCanalSeguro(CANAL_BAJAR_BRAZO, "BAJAR_BRAZO", duracionMs);
+    unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_BRAZO_MS;
+    activarCanalSeguro(CANAL_BAJAR_BRAZO, "BAJAR_BRAZO", dur);
   }
   else if (cmd == "LUZ_LED" || (cmd.length() == 0 && idNum == 9)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
