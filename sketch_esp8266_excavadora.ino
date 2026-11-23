@@ -50,14 +50,14 @@ int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (Dirección OK)
 int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (Dirección OK)
 int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA (Garra/Cabina Izq)
 int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA (Garra/Cabina Der)
-int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> MOVER IZQUIERDA (Carrito completo Izq)
+int CANAL_MOVER_IZQUIERDA   = 11;  // T11 -> MOVER IZQUIERDA (pareja de T10 en el Módulo 2)
 int CANAL_MOVER_DERECHA     = 10;  // T10 -> MOVER DERECHA (Carrito completo Der)
 int CANAL_SUBIR_BRAZO       = 8;   // T8  -> SUBIR BRAZO (confirmado)
 int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = 5;   // T5  -> Pin físico de VELOCIDAD
+int CANAL_CONTROL_REMOTO    = 12;  // T12 -> Pin físico de VELOCIDAD (optoacoplador conectado en el Módulo 3)
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
