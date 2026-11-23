@@ -57,7 +57,7 @@ int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = -1;  // Desactivado en hardware para que Ctrl. Remoto NO active la DEMO física
+int CANAL_CONTROL_REMOTO    = 11;  // T11 -> VELOCIDAD (sin activar la DEMO física del 13)
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -68,7 +68,7 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 const unsigned long DURACION_DEFECTO_MS  = 1200; // Duración máx. si no llega DETENER al soltar (evita que se pase de largo)
 const unsigned long DURACION_BRAZO_MS    = 3200; // Mayor tiempo y recorrido continuo para subir/bajar brazo
-const unsigned long DURACION_AUXILIAR_MS = 350;  // Pulso controlado (~350ms) para Luz/Sonido/Demo
+const unsigned long DURACION_AUXILIAR_MS = 850;  // Pulso de 850 ms para que Luz LED, Sonido y Velocidad sí procesen en el carrito
 const unsigned long DURACION_MAXIMA_MS   = 5000; // Límite máximo de seguridad
 const unsigned long PAUSA_TRANSICION_MS  = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
 const unsigned long TIEMPO_RESET_BTN_MS  = 5000; // 5 segundos para resetear Wi-Fi (8.2)
