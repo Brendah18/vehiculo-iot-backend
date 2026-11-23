@@ -15,6 +15,13 @@ import { monitoreoInstance } from "./monitoreo.js?v=5.0";
 class PlatformApp {
   constructor() {
     this.commandCatalog = new Map();
+    this.comandoActivo = null;
+    this.activePulseTimer = null;
+    this.isPulseLocked = false;
+    this.soundEnabled = false;
+    this.highSpeedEnabled = false;
+    this.activeOscillator = null;
+    this._dispatchChain = Promise.resolve();
     this.isDemoRunning = false;
     this.activeDemoId = null;
     this.demoAbortController = null;
@@ -157,7 +164,7 @@ class PlatformApp {
       { id_comando: 9,  codigo: 9,  nombre: "LUZ_LED",           etiqueta: "09 · LUZ / LED" },
       { id_comando: 10, codigo: 10, nombre: "ACTIVAR_SONIDO",    etiqueta: "10 · ACTIVAR SONIDO" },
       { id_comando: 11, codigo: 11, nombre: "DESACTIVAR_SONIDO", etiqueta: "11 · DESACTIVAR SONIDO" },
-      { id_comando: 12, codigo: 12, nombre: "CONTROL_REMOTO",    etiqueta: "12 · CONTROL REMOTO" },
+      { id_comando: 12, codigo: 12, nombre: "CONTROL_REMOTO",    etiqueta: "12 · VELOCIDAD" },
       { id_comando: 13, codigo: 13, nombre: "DETENER",           etiqueta: "13 · DETENER (Paro Total)" }
     ];
 
@@ -170,6 +177,7 @@ class PlatformApp {
     });
     this.commandCatalog.set("AVANZAR", { id_comando: 1, codigo: 1, nombre: "ADELANTE" });
     this.commandCatalog.set("RETROCEDER", { id_comando: 2, codigo: 2, nombre: "ATRAS" });
+    this.commandCatalog.set("ATRÁS", { id_comando: 2, codigo: 2, nombre: "ATRAS" });
     this.commandCatalog.set("IZQUIERDA", { id_comando: 3, codigo: 3, nombre: "GIRAR_IZQUIERDA" });
     this.commandCatalog.set("DERECHA", { id_comando: 4, codigo: 4, nombre: "GIRAR_DERECHA" });
   }
@@ -459,16 +467,187 @@ class PlatformApp {
 
     // Botón Prioritario DETENER (Aborta DEMO si está corriendo y detiene motores al instante)
     const stopButtons = [this.ui.btnStopPriority, this.ui.btnDpadStop].filter(Boolean);
+    let lastStopClickAt = 0;
     stopButtons.forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        this.joystick?.forceStop();
+      const handlePriorityStop = async (e) => {
+        if (e.type === "pointerdown" && e.button !== undefined && e.button !== 0) return;
+        e.preventDefault();
+        const now = Date.now();
+        if (now - lastStopClickAt < 180) return;
+        lastStopClickAt = now;
+
+        this.comandoActivo = null;
+        if (this.activePulseTimer) {
+          clearTimeout(this.activePulseTimer);
+          this.activePulseTimer = null;
+        }
+        this.isPulseLocked = false;
+
+        if (this.joystick) {
+          this.joystick.isDragging = false;
+          this.joystick.currentDirection = "DETENER";
+          this.joystick.thumb?.classList.remove("dragging");
+          if (this.joystick.thumb) {
+            this.joystick.thumb.style.transform = "translate3d(0px, 0px, 0px)";
+          }
+        }
+
         if (this.isDemoRunning) {
           await this.cancelActiveDemo();
         } else {
           await this.dispatchCommand("DETENER", true);
         }
-      });
+      };
+      btn.addEventListener("pointerdown", handlePriorityStop);
+      btn.addEventListener("click", handlePriorityStop);
+      btn.addEventListener("contextmenu", (e) => e.preventDefault());
     });
+
+    // =========================================================================
+    // REPARACIÓN DE EVENTOS UNIFICADOS (Pointer Events + comandoActivo + Debounce 350ms)
+    // =========================================================================
+    const SINGLE_PULSE_COMMANDS = new Set([
+      "LUZ_LED",
+      "ACTIVAR_SONIDO",
+      "DESACTIVAR_SONIDO",
+      "CONTROL_REMOTO"
+    ]);
+
+    let pressStartedAt = 0;
+
+    const releaseContinuousCommand = () => {
+      if (this.joystick?.isDragging) return;
+      if (this.comandoActivo !== null) {
+        this.comandoActivo = null;
+        if (this.activePulseTimer) {
+          clearTimeout(this.activePulseTimer);
+          this.activePulseTimer = null;
+        }
+        const elapsed = Date.now() - pressStartedAt;
+        const minHoldMs = this.highSpeedEnabled ? 550 : 380;
+        if (elapsed < minHoldMs) {
+          this.activePulseTimer = window.setTimeout(() => {
+            this.activePulseTimer = null;
+            if (!this.isDemoRunning && this.comandoActivo === null) {
+              this.dispatchCommand("DETENER", true);
+            }
+          }, minHoldMs - elapsed);
+        } else if (!this.isDemoRunning) {
+          this.dispatchCommand("DETENER", true);
+        }
+      }
+    };
+
+    // Seguridad global al soltar fuera del botón o perder foco de ventana
+    window.addEventListener("pointerup", releaseContinuousCommand);
+    window.addEventListener("pointercancel", releaseContinuousCommand);
+    window.addEventListener("blur", releaseContinuousCommand);
+
+    const bindUnifiedControl = (btn, fallbackCmd) => {
+      if (!btn) return;
+
+      const getCodigo = () =>
+        this.normalizeCommandKey(
+          btn.getAttribute("data-codigo") ||
+            btn.getAttribute("data-cmd-name") ||
+            btn.getAttribute("data-comando") ||
+            fallbackCmd
+        );
+
+      btn.addEventListener("contextmenu", (e) => e.preventDefault());
+
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        e.preventDefault();
+
+        const codigo = getCodigo();
+        if (!codigo || !this.canExecuteCommand(codigo)) return;
+
+        // 1. Botones de acción puntual (LUZ_LED, ACTIVAR_SONIDO, DESACTIVAR_SONIDO, CONTROL_REMOTO):
+        //    Pulso controlado de 350 ms + DETENER automático + debounce contra doble clic.
+        if (SINGLE_PULSE_COMMANDS.has(codigo)) {
+          if (this.isPulseLocked) return;
+          this.isPulseLocked = true;
+
+          if (this.comandoActivo !== null) {
+            this.comandoActivo = null;
+          }
+          if (this.activePulseTimer) {
+            clearTimeout(this.activePulseTimer);
+            this.activePulseTimer = null;
+          }
+
+          if (codigo === "CONTROL_REMOTO") {
+            this.highSpeedEnabled = !this.highSpeedEnabled;
+            const targetSpeed = this.highSpeedEnabled ? 100 : 70;
+            const lblPower = document.getElementById("lbl-joy-power");
+            if (lblPower) lblPower.textContent = `${targetSpeed}%`;
+            api.ajustarVelocidad(targetSpeed, CONFIG.VEHICULO_ID);
+          } else if (codigo === "ACTIVAR_SONIDO") {
+            this.emitClaxonSound();
+            // Solo activar: si el sonido ya está activo, actualizar UI sin volver a pulsar el botón toggle físico
+            if (this.soundEnabled) {
+              this.updateCommandUiOnly("ACTIVAR_SONIDO");
+              this.activePulseTimer = window.setTimeout(() => {
+                this.activePulseTimer = null;
+                this.isPulseLocked = false;
+              }, 350);
+              return;
+            }
+            this.soundEnabled = true;
+          } else if (codigo === "DESACTIVAR_SONIDO") {
+            this.stopClaxonSound();
+            // Solo desactivar: si el sonido ya está apagado, actualizar UI sin pulsar el botón toggle físico
+            if (!this.soundEnabled) {
+              this.updateCommandUiOnly("DESACTIVAR_SONIDO");
+              this.activePulseTimer = window.setTimeout(() => {
+                this.activePulseTimer = null;
+                this.isPulseLocked = false;
+              }, 350);
+              return;
+            }
+            this.soundEnabled = false;
+          }
+
+          this.dispatchCommand(codigo, false);
+          this.activePulseTimer = window.setTimeout(() => {
+            this.activePulseTimer = null;
+            this.isPulseLocked = false;
+            if (!this.isDemoRunning && this.comandoActivo === null) {
+              this.dispatchCommand("DETENER", true);
+            }
+          }, 350);
+          return;
+        }
+
+        // 2. Comandos continuos (ADELANTE, ATRAS, GIRAR_IZQUIERDA, GIRAR_DERECHA, MOVER_*, *_BRAZO):
+        //    Si comandoActivo !== codigo, guardar comandoActivo = codigo y enviar 1 sola vez.
+        if (this.activePulseTimer) {
+          clearTimeout(this.activePulseTimer);
+          this.activePulseTimer = null;
+          this.isPulseLocked = false;
+        }
+
+        if (this.comandoActivo !== codigo) {
+          this.comandoActivo = codigo;
+          pressStartedAt = Date.now();
+          this.dispatchCommand(codigo, false);
+        }
+      });
+
+      btn.addEventListener("pointerup", (e) => {
+        e.preventDefault();
+        releaseContinuousCommand();
+      });
+
+      btn.addEventListener("pointercancel", () => {
+        releaseContinuousCommand();
+      });
+
+      btn.addEventListener("pointerleave", () => {
+        releaseContinuousCommand();
+      });
+    };
 
     // Cruceta D-Pad (01-ADELANTE, 02-ATRAS, 03-GIRAR_IZQUIERDA, 04-GIRAR_DERECHA)
     const dpadList = [
@@ -477,26 +656,10 @@ class PlatformApp {
       { el: this.ui.btnDpadLeft, cmd: "GIRAR_IZQUIERDA" },
       { el: this.ui.btnDpadRight, cmd: "GIRAR_DERECHA" }
     ];
-    dpadList.forEach(({ el, cmd }) => {
-      el?.addEventListener("click", async () => {
-        if (!this.canExecuteCommand(cmd)) return;
-        await this.dispatchCommand(cmd, false);
-      });
-    });
+    dpadList.forEach(({ el, cmd }) => bindUnifiedControl(el, cmd));
 
-    // Catálogo de los 8 Comandos Físicos Restantes (05 al 12)
-    this.ui.secondaryButtons.forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const cmdName = btn.getAttribute("data-cmd-name") || btn.getAttribute("data-comando");
-        if (!cmdName) return;
-        if (!this.canExecuteCommand(cmdName)) return;
-
-        if (cmdName === "ACTIVAR_SONIDO") {
-          this.emitClaxonSound();
-        }
-        await this.dispatchCommand(cmdName, false);
-      });
-    });
+    // Catálogo de los 8 Comandos Físicos Restantes (05 al 12) usando data-codigo exacto
+    this.ui.secondaryButtons.forEach((btn) => bindUnifiedControl(btn, ""));
 
     // Secuencias DEMO (Botones Iniciar y Cancelar)
     this.ui.btnDemoStart?.addEventListener("click", () => this.startSelectedDemo());
@@ -741,6 +904,7 @@ class PlatformApp {
       if (!this.audioCtx) this.audioCtx = new AudioCtx();
       if (this.audioCtx.state === "suspended") this.audioCtx.resume();
 
+      this.stopClaxonSound();
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
       osc.type = "sawtooth";
@@ -750,11 +914,62 @@ class PlatformApp {
       gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.28);
       osc.connect(gain);
       gain.connect(this.audioCtx.destination);
+      this.activeOscillator = osc;
+      osc.onended = () => {
+        if (this.activeOscillator === osc) this.activeOscillator = null;
+      };
       osc.start();
       osc.stop(this.audioCtx.currentTime + 0.28);
     } catch {
       // Audio no bloqueante
     }
+  }
+
+  stopClaxonSound() {
+    try {
+      if (this.activeOscillator) {
+        this.activeOscillator.stop();
+        this.activeOscillator.disconnect();
+        this.activeOscillator = null;
+      }
+    } catch {
+      this.activeOscillator = null;
+    }
+  }
+
+  updateCommandUiOnly(commandKey) {
+    const normalized = this.normalizeCommandKey(commandKey);
+    const entry =
+      this.commandCatalog.get(normalized) ||
+      CONFIG.DEFAULT_COMMAND_MAP[normalized] ||
+      { id_comando: 10, codigo: 10, nombre: normalized };
+    const name = entry.nombre || normalized;
+    this.lastUserCommand = { name, codigo: entry.codigo, at: Date.now() };
+    if (this.ui.lblComandoActual) this.ui.lblComandoActual.textContent = name;
+    const lblJoyDir = document.getElementById("lbl-joy-dir");
+    if (lblJoyDir) lblJoyDir.textContent = name.replace(/_/g, " ");
+    if (this.ui.badgeJoystickDir) this.ui.badgeJoystickDir.textContent = name.replace(/_/g, " ");
+    destelloVisualControl(name, 900);
+  }
+
+  resolveHardwareCommand(normalizedKey, defaultCmdInfo) {
+    // MOVER_IZQUIERDA y MOVER_DERECHA accionan el canal físico confirmado de izquierda/derecha en el ESP8266
+    // manteniendo el nombre e iluminación de MOVER_IZQUIERDA / MOVER_DERECHA en la interfaz web.
+    if (normalizedKey === "MOVER_IZQUIERDA") {
+      return (
+        this.commandCatalog.get("GIRAR_IZQUIERDA") ||
+        CONFIG.DEFAULT_COMMAND_MAP.GIRAR_IZQUIERDA ||
+        defaultCmdInfo
+      );
+    }
+    if (normalizedKey === "MOVER_DERECHA") {
+      return (
+        this.commandCatalog.get("GIRAR_DERECHA") ||
+        CONFIG.DEFAULT_COMMAND_MAP.GIRAR_DERECHA ||
+        defaultCmdInfo
+      );
+    }
+    return defaultCmdInfo;
   }
 
   async handleJoystickDirection(direction) {
@@ -779,96 +994,120 @@ class PlatformApp {
     if (lblJoyDir) lblJoyDir.textContent = textDir;
 
     if (this.isDemoRunning && !isPriorityStop) return;
+    if (isPriorityStop) {
+      this.comandoActivo = null;
+    } else {
+      this.comandoActivo = mappedCmd;
+    }
     await this.dispatchCommand(mappedCmd, isPriorityStop);
   }
 
   async dispatchCommand(commandKey, isPriority = false) {
     if (this.isDemoRunning && !isPriority) return;
 
-    // Asegurar que la sincronización con RDS haya concluido para usar los id_comando reales de MySQL
-    if (this._catalogSyncPromise) {
-      try {
-        await this._catalogSyncPromise;
-      } catch {
-        // continuar
-      }
-    }
-
     const normalized = this.normalizeCommandKey(commandKey);
-    const cmdInfo =
+    const fallbackEntry =
       this.commandCatalog.get(normalized) ||
       CONFIG.DEFAULT_COMMAND_MAP[normalized] ||
       this.commandCatalog.get("DETENER") ||
       CONFIG.DEFAULT_COMMAND_MAP.DETENER;
 
-    // Registrar comando exacto presionado por el usuario para evitar que un eco tardío ilumine otro botón
+    // Actualizar UI inmediatamente al presionar/soltar
+    const immediateName = fallbackEntry.nombre || normalized || "DETENER";
     this.lastUserCommand = {
-      name: cmdInfo.nombre,
-      codigo: cmdInfo.codigo,
+      name: immediateName,
+      codigo: fallbackEntry.codigo,
       at: Date.now()
     };
 
-    if (this.ui.lblComandoActual) this.ui.lblComandoActual.textContent = cmdInfo.nombre;
+    if (this.ui.lblComandoActual) this.ui.lblComandoActual.textContent = immediateName;
     const lblJoyDir = document.getElementById("lbl-joy-dir");
     if (lblJoyDir) {
-      lblJoyDir.textContent = cmdInfo.nombre === "DETENER" ? "En espera" : cmdInfo.nombre.replace(/_/g, " ");
+      lblJoyDir.textContent = immediateName === "DETENER" ? "En espera" : immediateName.replace(/_/g, " ");
     }
     if (this.ui.badgeJoystickDir) {
-      this.ui.badgeJoystickDir.textContent = cmdInfo.nombre === "DETENER" ? "En espera" : cmdInfo.nombre.replace(/_/g, " ");
+      this.ui.badgeJoystickDir.textContent = immediateName === "DETENER" ? "En espera" : immediateName.replace(/_/g, " ");
     }
 
-    // Iluminar EXCLUSIVAMENTE el botón presionado (apagando cualquier otro previo)
-    destelloVisualControl(cmdInfo.nombre, 900);
+    destelloVisualControl(immediateName, 900);
 
-    const origenTag = isPriority ? "PRIORIDAD-DETENER" : `WEB-${this.currentRole}`;
+    const runSend = async () => {
+      if (this.isDemoRunning && !isPriority) return;
 
-    try {
-      const res = await api.enviarMovimiento({
-        idVehiculo: CONFIG.VEHICULO_ID,
-        idComando: cmdInfo.id_comando,
-        codigo: cmdInfo.codigo,
-        nombre: cmdInfo.nombre,
-        origen: origenTag
-      });
-
-      this.updateApiIndicator("available");
-      if (this.monitoreo) {
-        const estadoMostrar = res.data?.estado
-          ? { ...res.data.estado, comando: cmdInfo.nombre, codigo: cmdInfo.codigo }
-          : { id_vehiculo: CONFIG.VEHICULO_ID, comando: cmdInfo.nombre, codigo: cmdInfo.codigo, conectado: 1, fecha_actualizacion: new Date().toISOString() };
-        this.monitoreo.renderEstadoCard(estadoMostrar);
-        this.monitoreo.fetchAndRenderHistorial(false);
+      if (this._catalogSyncPromise) {
+        try {
+          await this._catalogSyncPromise;
+        } catch {
+          // continuar
+        }
       }
-    } catch (err) {
-      if (err && err.status === 403) {
-        alert(err.message);
-        return;
-      }
-      // Si el id_comando falló por aún no estar sincronizado, forzar sincronización y reintentar
-      this._rdsCatalogSynced = false;
-      await this.loadCommands();
-      const retryCmd = this.commandCatalog.get(normalized) || cmdInfo;
+
+      const cmdInfo =
+        this.commandCatalog.get(normalized) ||
+        CONFIG.DEFAULT_COMMAND_MAP[normalized] ||
+        this.commandCatalog.get("DETENER") ||
+        CONFIG.DEFAULT_COMMAND_MAP.DETENER;
+      const hwCmd = this.resolveHardwareCommand(normalized, cmdInfo);
+
+      const origenTag = isPriority ? "PRIORIDAD-DETENER" : `WEB-${this.currentRole}`;
+
       try {
-        await api.enviarMovimiento({
+        const res = await api.enviarMovimiento({
           idVehiculo: CONFIG.VEHICULO_ID,
-          idComando: retryCmd.id_comando,
-          codigo: retryCmd.codigo,
-          nombre: retryCmd.nombre,
+          idComando: hwCmd.id_comando,
+          codigo: hwCmd.codigo,
+          nombre: hwCmd.nombre,
           origen: origenTag
         });
-      } catch {
-        const currentToken =
-          typeof api.getAuthToken === "function"
-            ? api.getAuthToken()
-            : window.sessionStorage.getItem("iot_auth_token") || "";
-        this.wsClient.sendJson({
-          id_vehiculo: CONFIG.VEHICULO_ID,
-          id_comando: retryCmd.id_comando,
-          token: currentToken,
-          origen: isPriority ? "PRIORIDAD-DETENER" : `WSS-${this.currentRole}`
-        });
+
+        this.updateApiIndicator("available");
+        if (this.monitoreo) {
+          const estadoMostrar = res.data?.estado
+            ? { ...res.data.estado, comando: cmdInfo.nombre, codigo: cmdInfo.codigo }
+            : { id_vehiculo: CONFIG.VEHICULO_ID, comando: cmdInfo.nombre, codigo: cmdInfo.codigo, conectado: 1, fecha_actualizacion: new Date().toISOString() };
+          this.monitoreo.renderEstadoCard(estadoMostrar);
+          this.monitoreo.fetchAndRenderHistorial(false);
+        }
+      } catch (err) {
+        if (err && err.status === 403) {
+          alert(err.message);
+          return;
+        }
+        this._rdsCatalogSynced = false;
+        await this.loadCommands();
+        const retryCmd = this.resolveHardwareCommand(normalized, this.commandCatalog.get(normalized) || cmdInfo);
+        try {
+          await api.enviarMovimiento({
+            idVehiculo: CONFIG.VEHICULO_ID,
+            idComando: retryCmd.id_comando,
+            codigo: retryCmd.codigo,
+            nombre: retryCmd.nombre,
+            origen: origenTag
+          });
+        } catch {
+          const currentToken =
+            typeof api.getAuthToken === "function"
+              ? api.getAuthToken()
+              : window.sessionStorage.getItem("iot_auth_token") || "";
+          this.wsClient.sendJson({
+            id_vehiculo: CONFIG.VEHICULO_ID,
+            id_comando: retryCmd.id_comando,
+            codigo: retryCmd.nombre,
+            token: currentToken,
+            origen: isPriority ? "PRIORIDAD-DETENER" : `WSS-${this.currentRole}`
+          });
+        }
       }
+    };
+
+    // Si es DETENER prioritario, ejecutar de inmediato sin esperar cola previa
+    if (isPriority || normalized === "DETENER") {
+      this._dispatchChain = runSend();
+      return this._dispatchChain;
     }
+
+    this._dispatchChain = this._dispatchChain.then(runSend, runSend);
+    return this._dispatchChain;
   }
 
   // ===========================================================================
@@ -895,17 +1134,36 @@ class PlatformApp {
   async actualizarEstadoDemoSinHistorial(cmdInfo) {
     // PUT /api/estado actualiza estado_vehiculo en RDS (sp_actualizar_estado) SIN insertar en historial_comandos
     // y hace broadcast en tiempo real por el WebSocket wss://52.4.170.82:8000/ws/1 hacia el ESP8266
+    const normalized = this.normalizeCommandKey(cmdInfo?.nombre);
+    const hwCmd = this.resolveHardwareCommand(normalized, cmdInfo);
+
+    if (normalized === "ACTIVAR_SONIDO") {
+      this.soundEnabled = true;
+    } else if (normalized === "DESACTIVAR_SONIDO") {
+      this.soundEnabled = false;
+    }
+
     try {
       await api.request("/api/estado", {
         method: "PUT",
         body: JSON.stringify({
           id_vehiculo: CONFIG.VEHICULO_ID,
-          id_comando: Number(cmdInfo.id_comando),
+          id_comando: Number(hwCmd.id_comando),
           conectado: true
         })
       }, 3500);
     } catch {
-      // Estado visual continúa sin bloqueo
+      const currentToken =
+        typeof api.getAuthToken === "function"
+          ? api.getAuthToken()
+          : window.sessionStorage.getItem("iot_auth_token") || "";
+      this.wsClient.sendJson({
+        id_vehiculo: CONFIG.VEHICULO_ID,
+        id_comando: Number(hwCmd.id_comando),
+        codigo: hwCmd.nombre,
+        token: currentToken,
+        origen: "DEMO-PASO"
+      });
     }
     if (this.monitoreo) {
       this.monitoreo.renderEstadoCard({
@@ -936,6 +1194,13 @@ class PlatformApp {
       }
     }
 
+    this.comandoActivo = null;
+    if (this.activePulseTimer) {
+      clearTimeout(this.activePulseTimer);
+      this.activePulseTimer = null;
+    }
+    this.isPulseLocked = false;
+
     const selectedDemoId = Number(this.ui.selectDemo.value || 1);
     if (this.demoAbortController) {
       this.demoAbortController.abort();
@@ -946,14 +1211,20 @@ class PlatformApp {
     this.setDemoLockState(true, selectedDemoId);
     limpiarDestellosVisuales();
 
-    // Secuencia limpia y ordenada de la DEMO (1 movimiento a la vez + pausa real entre pasos)
+    // Secuencia DEMO completa: movimientos continuos (1200 ms), brazo con recorrido completo (3200 ms), y Velocidad
     const secuenciaPasos = [
-      { orden: 1, key: "ADELANTE",        duracion_ms: 1800, pausa_ms: 850 },
-      { orden: 2, key: "GIRAR_IZQUIERDA", duracion_ms: 1700, pausa_ms: 850 },
-      { orden: 3, key: "SUBIR_BRAZO",     duracion_ms: 1700, pausa_ms: 850 },
-      { orden: 4, key: "BAJAR_BRAZO",     duracion_ms: 1700, pausa_ms: 850 },
-      { orden: 5, key: "LUZ_LED",         duracion_ms: 1600, pausa_ms: 850 },
-      { orden: 6, key: "ATRAS",           duracion_ms: 1800, pausa_ms: 600 }
+      { orden: 1,  key: "ADELANTE",          duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 2,  key: "ATRAS",             duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 3,  key: "GIRAR_IZQUIERDA",   duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 4,  key: "GIRAR_DERECHA",     duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 5,  key: "MOVER_IZQUIERDA",   duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 6,  key: "MOVER_DERECHA",     duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 7,  key: "SUBIR_BRAZO",       duracion_ms: 3200, pausa_ms: 700 },
+      { orden: 8,  key: "BAJAR_BRAZO",       duracion_ms: 3200, pausa_ms: 700 },
+      { orden: 9,  key: "CONTROL_REMOTO",    duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 10, key: "ACTIVAR_SONIDO",    duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 11, key: "DESACTIVAR_SONIDO", duracion_ms: 1200, pausa_ms: 600 },
+      { orden: 12, key: "LUZ_LED",           duracion_ms: 1500, pausa_ms: 600 }
     ];
 
     try {
@@ -964,7 +1235,13 @@ class PlatformApp {
         const cmdInfo =
           this.commandCatalog.get(paso.key) ||
           CONFIG.DEFAULT_COMMAND_MAP[paso.key] ||
-          { id_comando: 1, codigo: 1, nombre: paso.key };
+          { id_comando: 9, codigo: 9, nombre: paso.key };
+
+        this.lastUserCommand = {
+          name: cmdInfo.nombre,
+          codigo: cmdInfo.codigo,
+          at: Date.now()
+        };
 
         // 1. Mostrar y encender ÚNICAMENTE el movimiento del paso actual
         if (this.ui.lblDemoCurrentStep) {
@@ -977,8 +1254,9 @@ class PlatformApp {
         if (lblJoyDir) lblJoyDir.textContent = `DEMO: ${cmdInfo.nombre.replace(/_/g, " ")}`;
         if (this.ui.badgeJoystickDir) this.ui.badgeJoystickDir.textContent = `Paso #${paso.orden}`;
 
-        destelloVisualControl(cmdInfo.nombre, paso.duracion_ms);
+        destelloVisualControl(cmdInfo.nombre, paso.duracion_ms + 300);
         await this.actualizarEstadoDemoSinHistorial(cmdInfo);
+        destelloVisualControl(cmdInfo.nombre, paso.duracion_ms + 100);
 
         // 2. Esperar duración exacta del paso (se aborta en 0 ms si presionan Cancelar o DETENER)
         const abortadoEnMov = await this.sleepCancelable(paso.duracion_ms, signal);
@@ -1024,6 +1302,12 @@ class PlatformApp {
   async cancelActiveDemo() {
     const demoId = this.activeDemoId || Number(this.ui.selectDemo?.value || 1);
     this.demoIgnoreServerUntil = Date.now() + 30000;
+    this.comandoActivo = null;
+    if (this.activePulseTimer) {
+      clearTimeout(this.activePulseTimer);
+      this.activePulseTimer = null;
+    }
+    this.isPulseLocked = false;
 
     // 1. Abortar inmediatamente el temporizador local (0 milisegundos)
     if (this.demoAbortController) {
@@ -1043,15 +1327,14 @@ class PlatformApp {
       this.ui.lblDemoCurrentStep.textContent = "DEMO cancelada · Vehículo en DETENER";
     }
 
-    // 3. Notificar al backend y actualizar estado a DETENER
+    // 3. Notificar al backend y enviar DETENER de inmediato
     this.wsClient.sendJson({
       accion: "CANCELAR_DEMO",
       id_vehiculo: CONFIG.VEHICULO_ID,
       id_demo: demoId
     });
 
-    const cmdStop = this.commandCatalog.get("DETENER") || CONFIG.DEFAULT_COMMAND_MAP.DETENER;
-    await this.actualizarEstadoDemoSinHistorial(cmdStop);
+    await this.dispatchCommand("DETENER", true);
   }
 
   setDemoLockState(locked, demoId = null) {
@@ -1085,11 +1368,13 @@ class PlatformApp {
       return;
     }
 
-    // Si estamos corriendo nuestra DEMO controlada o recién la cancelamos, ignorar ecos externos de demo
-    if (
-      evento.startsWith("DEMO_") &&
-      (this.isDemoRunning || Date.now() < this.demoIgnoreServerUntil)
-    ) {
+    // Mientras corre nuestra DEMO paso a paso, ignorar ecos de ESTADO_ACTUALIZADO / DEMO_* para que
+    // un eco retrasado de DETENER jamás apague o sobrescriba el paso actual (ej. LUZ_LED)
+    if (this.isDemoRunning) {
+      return;
+    }
+
+    if (evento.startsWith("DEMO_") && Date.now() < this.demoIgnoreServerUntil) {
       return;
     }
 
@@ -1217,18 +1502,21 @@ class PlatformApp {
             this.commandCatalog.set(key, {
               id_comando: Number(cmd.id_comando),
               codigo: Number(cmd.codigo ?? cmd.id_comando),
-              nombre: String(cmd.nombre)
+              nombre: key
             });
           });
-          // Sincronizar alias de Joystick con los IDs reales de RDS
+          // Sincronizar alias de Joystick y ATRÁS con los IDs reales de RDS
           const fwd = this.commandCatalog.get("ADELANTE");
           const bwd = this.commandCatalog.get("ATRAS");
           const lft = this.commandCatalog.get("GIRAR_IZQUIERDA");
           const rgt = this.commandCatalog.get("GIRAR_DERECHA");
-          if (fwd) this.commandCatalog.set("AVANZAR", { ...fwd });
-          if (bwd) this.commandCatalog.set("RETROCEDER", { ...bwd });
-          if (lft) this.commandCatalog.set("IZQUIERDA", { ...lft });
-          if (rgt) this.commandCatalog.set("DERECHA", { ...rgt });
+          if (fwd) this.commandCatalog.set("AVANZAR", { ...fwd, nombre: "ADELANTE" });
+          if (bwd) {
+            this.commandCatalog.set("RETROCEDER", { ...bwd, nombre: "ATRAS" });
+            this.commandCatalog.set("ATRÁS", { ...bwd, nombre: "ATRAS" });
+          }
+          if (lft) this.commandCatalog.set("IZQUIERDA", { ...lft, nombre: "GIRAR_IZQUIERDA" });
+          if (rgt) this.commandCatalog.set("DERECHA", { ...rgt, nombre: "GIRAR_DERECHA" });
 
           this.refreshDemoEditorSelects();
         }
