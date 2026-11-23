@@ -57,7 +57,7 @@ int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = 12;  // T12 -> Pin físico de VELOCIDAD (optoacoplador conectado en el Módulo 3)
+int CANAL_CONTROL_REMOTO    = 0;   // T0  -> Pin físico de VELOCIDAD (1er optoacoplador del Módulo 1, único sin usar)
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
