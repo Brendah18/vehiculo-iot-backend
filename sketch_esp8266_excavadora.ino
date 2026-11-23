@@ -86,6 +86,8 @@ unsigned long tiempoFinAccion = 0;
 String   comandoActivo        = "DETENER";
 
 bool     wsConectado          = false;
+bool     wssIniciado          = false;
+bool     wifiEstabaConectado  = false;
 unsigned long inicioBotonReset = 0;
 bool     botonResetPresionado  = false;
 
@@ -395,6 +397,9 @@ void revisarComandosSerial() {
   entrada.trim();
   if (entrada.length() == 0) return;
 
+  Serial.print(F("[CONSOLA RX] "));
+  Serial.println(entrada);
+
   // 8.1: Restablecimiento Wi-Fi con 'R' o 'r'
   if (entrada.equalsIgnoreCase("R")) {
     restablecerWiFi("Comando Serial R/r");
@@ -479,6 +484,27 @@ void revisarComandosSerial() {
     return;
   }
 
+  // Prueba específica de los 12 optoacopladores cableados en los 3 módulos verdes
+  if (entrada.equalsIgnoreCase("MODULOS")) {
+    const int canalesCableados[12] = {1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15};
+    Serial.println(F("[MODULOS] Probando los 12 canales de tus 3 modulos verdes..."));
+    liberarSalidas("Inicio MODULOS");
+    for (int i = 0; i < 12; i++) {
+      int ch = canalesCableados[i];
+      int modNum = (ch <= 4) ? 1 : ((ch <= 11) ? 2 : 3);
+      Serial.print(F("  -> Modulo "));
+      Serial.print(modNum);
+      Serial.print(F(" | Canal T"));
+      Serial.println(ch);
+      escribirRegistros595((uint16_t)(1U << ch));
+      delay(700);
+      escribirRegistros595(0x0000);
+      delay(250);
+    }
+    Serial.println(F("[MODULOS] Prueba completa. Todas las salidas apagadas (0x0000)."));
+    return;
+  }
+
   // Modo prueba rápida de todos los canales 0..15 (~13 segundos total)
   if (entrada.equalsIgnoreCase("TEST_CANALES") || entrada.equalsIgnoreCase("ALL")) {
     Serial.println(F("[TEST_CANALES] Apagando salidas e iniciando barrido canal 0 -> 15..."));
@@ -540,6 +566,7 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH); // Apagado hasta conectar WSS
 
   Serial.begin(115200);
+  Serial.setTimeout(60); // Responde en consola aunque falte "Nueva linea"
   delay(200);
   Serial.println();
   Serial.println(F("=========================================================="));
@@ -550,59 +577,80 @@ void setup() {
   Serial.print(F("Vehiculo asignado:        ID "));
   Serial.println(ID_VEHICULO_PROPIO);
   Serial.println(F("Salidas 74HC595:          0x0000 (Estado seguro inicial)"));
-  Serial.println(F("Comandos Serial:          [C1..C6] | [TEST_CANALES] | [T0..T15] | [S] | [R]"));
+  Serial.println(F("Comandos Serial:          [MODULOS] | [TEST_CANALES] | [T0..T15] | [S] | [R]"));
 
   // 2. Configurar WiFiManager (sin contraseñas fijas en código - 4.1)
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   wm.setDebugOutput(false); // 5.4: No exhibir contraseñas ni información sensible
-  wm.setConfigPortalTimeout(180); // 3 min de espera si se abre el portal
+  wm.setConfigPortalTimeout(45); // 45 s máx. antes de habilitar consola local sin Wi-Fi
 
   Serial.print(F("[WIFI] Conectando con red guardada (o portal: "));
   Serial.print(AP_PORTAL_NOMBRE);
   Serial.println(F(")..."));
 
-  if (!wm.autoConnect(AP_PORTAL_NOMBRE)) {
-    Serial.println(F("[WIFI] Tiempo agotado en portal. Reiniciando en estado seguro..."));
+  if (wm.autoConnect(AP_PORTAL_NOMBRE)) {
+    wifiEstabaConectado = true;
+
+    // 3. Mostrar datos de conexión Wi-Fi sin contraseña (6.1)
+    Serial.println(F("[WIFI] Conexion establecida!"));
+    Serial.print(F("  -> Red SSID:  "));
+    Serial.println(WiFi.SSID());
+    Serial.print(F("  -> IP Local:  "));
+    Serial.println(WiFi.localIP());
+    Serial.print(F("  -> Senal:     "));
+    Serial.print(WiFi.RSSI());
+    Serial.println(F(" dBm"));
+
+    // 4. Iniciar WebSocket Seguro (WSS) hacia AWS EC2
+    Serial.print(F("[WSS] Conectando a wss://"));
+    Serial.print(WS_HOST);
+    Serial.print(F(":"));
+    Serial.print(WS_PORT);
+    Serial.println(WS_PATH);
+
+    webSocket.beginSSL(WS_HOST, WS_PORT, WS_PATH);
+    webSocket.onEvent(webSocketEvent);
+    webSocket.setReconnectInterval(3000);
+    wssIniciado = true;
+  } else {
     escribirRegistros595(0x0000);
-    delay(2000);
-    ESP.restart();
+    wssIniciado = false;
+    wifiEstabaConectado = false;
+    Serial.println(F("[WIFI] Modo prueba local sin Wi-Fi activo. Escribe MODULOS, TEST_CANALES o T1..T15 en consola (o R para abrir portal Wi-Fi)."));
   }
-
-  // 3. Mostrar datos de conexión Wi-Fi sin contraseña (6.1)
-  Serial.println(F("[WIFI] Conexion establecida!"));
-  Serial.print(F("  -> Red SSID:  "));
-  Serial.println(WiFi.SSID());
-  Serial.print(F("  -> IP Local:  "));
-  Serial.println(WiFi.localIP());
-  Serial.print(F("  -> Senal:     "));
-  Serial.print(WiFi.RSSI());
-  Serial.println(F(" dBm"));
-
-  // 4. Iniciar WebSocket Seguro (WSS) hacia AWS EC2
-  Serial.print(F("[WSS] Conectando a wss://"));
-  Serial.print(WS_HOST);
-  Serial.print(F(":"));
-  Serial.print(WS_PORT);
-  Serial.println(WS_PATH);
-
-  webSocket.beginSSL(WS_HOST, WS_PORT, WS_PATH);
-  webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(3000);
 }
 
 // ==============================================================================
 // 11. LOOP PRINCIPAL (NO BLOQUEANTE)
 // ==============================================================================
 void loop() {
-  // Atender WebSocket
-  webSocket.loop();
+  wl_status_t estadoWifi = WiFi.status();
 
-  // Revisar si se cayó el Wi-Fi -> pasar inmediatamente a estado seguro (7.3 / RN11)
-  if (WiFi.status() != WL_CONNECTED) {
+  if (estadoWifi == WL_CONNECTED) {
+    wifiEstabaConectado = true;
+    if (!wssIniciado) {
+      Serial.print(F("[WSS] Conectando a wss://"));
+      Serial.print(WS_HOST);
+      Serial.print(F(":"));
+      Serial.print(WS_PORT);
+      Serial.println(WS_PATH);
+      webSocket.beginSSL(WS_HOST, WS_PORT, WS_PATH);
+      webSocket.onEvent(webSocketEvent);
+      webSocket.setReconnectInterval(3000);
+      wssIniciado = true;
+    }
+  } else if (wifiEstabaConectado) {
+    // Solo liberar salidas al ocurrir una desconexión real de Wi-Fi, sin bloquear pruebas locales offline
+    wifiEstabaConectado = false;
     if (salidaActiva) {
       liberarSalidas("Perdida de conexion Wi-Fi");
     }
+  }
+
+  // Atender WebSocket solo si ya fue iniciado
+  if (wssIniciado) {
+    webSocket.loop();
   }
 
   // RN10: Liberación automática cuando vence el tiempo de pulsación del PC817
@@ -610,7 +658,7 @@ void loop() {
     liberarSalidas("Fin de duracion programada");
   }
 
-  // Revisar comandos de Monitor Serie (R/r, S, T0..T15) y botón físico de 5 s
+  // Revisar comandos de Monitor Serie (MODULOS, TEST_CANALES, T0..T15, S, R/r) y botón físico de 5 s
   revisarComandosSerial();
   revisarBotonResetWiFi();
 }
