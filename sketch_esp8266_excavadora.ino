@@ -66,12 +66,13 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS  = 1200; // Duración máx. si no llega DETENER al soltar (evita que se pase de largo)
-const unsigned long DURACION_BRAZO_MS    = 3200; // Mayor tiempo y recorrido continuo para subir/bajar brazo
-const unsigned long DURACION_AUXILIAR_MS = 350;  // Pulso controlado (~350ms) para Luz/Sonido/Demo
-const unsigned long DURACION_MAXIMA_MS   = 5000; // Límite máximo de seguridad
-const unsigned long PAUSA_TRANSICION_MS  = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
-const unsigned long TIEMPO_RESET_BTN_MS  = 5000; // 5 segundos para resetear Wi-Fi (8.2)
+const unsigned long DURACION_DEFECTO_MS   = 900;  // Duración normal para adelante/atrás
+const unsigned long DURACION_GIRO_PASO_MS = 230;  // Pulso corto al tocar izquierda/derecha (paso a paso, no de jalón)
+const unsigned long DURACION_BRAZO_MS     = 3200; // Mayor tiempo y recorrido continuo para subir/bajar brazo
+const unsigned long DURACION_AUXILIAR_MS  = 500;  // Pulso controlado para Luz/Sonido
+const unsigned long DURACION_MAXIMA_MS    = 5000; // Límite máximo de seguridad
+const unsigned long PAUSA_TRANSICION_MS   = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
+const unsigned long TIEMPO_RESET_BTN_MS   = 5000; // 5 segundos para resetear Wi-Fi (8.2)
 
 // ==============================================================================
 // 5. VARIABLES DE ESTADO GLOBAL
@@ -80,6 +81,7 @@ WebSocketsClient webSocket;
 
 uint16_t mascaraActual        = 0x0000;
 bool     salidaActiva         = false;
+bool     modoVelocidadAlta    = false;
 unsigned long tiempoFinAccion = 0;
 String   comandoActivo        = "DETENER";
 
@@ -167,24 +169,27 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     return;
   }
 
+  unsigned long durTraccion = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 1500UL : DURACION_DEFECTO_MS);
+  unsigned long durGiroPaso = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 420UL  : DURACION_GIRO_PASO_MS);
+
   // 2. Mapeo 1 a 1 por código en TEXTO EXACTO (prioritario) o id_comando numérico (respaldo)
   if (cmd == "ADELANTE" || (cmd.length() == 0 && idNum == 1)) {
-    activarCanalSeguro(CANAL_ADELANTE, "ADELANTE", duracionMs);
+    activarCanalSeguro(CANAL_ADELANTE, "ADELANTE", durTraccion);
   }
   else if (cmd == "ATRAS" || cmd == "ATRÁS" || (cmd.length() == 0 && idNum == 2)) {
-    activarCanalSeguro(CANAL_ATRAS, "ATRAS", duracionMs);
+    activarCanalSeguro(CANAL_ATRAS, "ATRAS", durTraccion);
   }
   else if (cmd == "GIRAR_IZQUIERDA" || (cmd.length() == 0 && idNum == 3)) {
-    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", duracionMs);
+    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", durGiroPaso);
   }
   else if (cmd == "GIRAR_DERECHA" || (cmd.length() == 0 && idNum == 4)) {
-    activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", duracionMs);
+    activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", durGiroPaso);
   }
   else if (cmd == "MOVER_IZQUIERDA" || (cmd.length() == 0 && idNum == 5)) {
-    activarCanalSeguro(CANAL_MOVER_IZQUIERDA, "MOVER_IZQUIERDA", duracionMs);
+    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "MOVER_IZQUIERDA", durGiroPaso);
   }
   else if (cmd == "MOVER_DERECHA" || (cmd.length() == 0 && idNum == 6)) {
-    activarCanalSeguro(CANAL_MOVER_DERECHA, "MOVER_DERECHA", duracionMs);
+    activarCanalSeguro(CANAL_GIRAR_DERECHA, "MOVER_DERECHA", durGiroPaso);
   }
   else if (cmd == "SUBIR_BRAZO" || (cmd.length() == 0 && idNum == 7)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_BRAZO_MS;
@@ -206,12 +211,15 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
     activarCanalSeguro(CANAL_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
   }
-  else if (cmd == "CONTROL_REMOTO" || (cmd.length() == 0 && idNum == 12)) {
+  else if (cmd == "CONTROL_REMOTO" || cmd == "VELOCIDAD" || (cmd.length() == 0 && idNum == 12)) {
+    modoVelocidadAlta = !modoVelocidadAlta;
+    Serial.print(F("[VELOCIDAD] Modo cambiado a: "));
+    Serial.println(modoVelocidadAlta ? F("ALTA (100%)") : F("NORMAL (70%)"));
     if (CANAL_CONTROL_REMOTO >= 0 && CANAL_CONTROL_REMOTO <= 15) {
       unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-      activarCanalSeguro(CANAL_CONTROL_REMOTO, "CONTROL_REMOTO", dur);
+      activarCanalSeguro(CANAL_CONTROL_REMOTO, "VELOCIDAD", dur);
     } else {
-      liberarSalidas("CONTROL_REMOTO (sin DEMO fisica)");
+      liberarSalidas("Cambio de VELOCIDAD aplicado");
     }
   }
   else {
