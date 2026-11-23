@@ -50,14 +50,14 @@ int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (Dirección OK)
 int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (Dirección OK)
 int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA (Dirección OK)
 int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA (Dirección OK)
-int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> VOLTEAR IZQUIERDA (en lugar de 11 que iba recto atrás)
-int CANAL_MOVER_DERECHA     = 7;   // T7  -> MOVER DERECHA (en lugar de 10 que iba recto enfrente)
+int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> MOVER IZQUIERDA (confirmado)
+int CANAL_MOVER_DERECHA     = 10;  // T10 -> MOVER DERECHA (canal activo del 2do módulo)
 int CANAL_SUBIR_BRAZO       = 8;   // T8  -> SUBIR BRAZO (confirmado)
 int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = -1;  // Desactivado en hardware para que Velocidad/Ctrl no vuelva loco al carro
+int CANAL_CONTROL_REMOTO    = 5;   // T5  -> VELOCIDAD (canal activo sin disparar la DEMO física de 11/13)
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
