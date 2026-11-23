@@ -82,6 +82,7 @@ WebSocketsClient webSocket;
 uint16_t mascaraActual        = 0x0000;
 bool     salidaActiva         = false;
 bool     modoVelocidadAlta    = false;
+bool     sonidoFisicoActivo   = false;
 unsigned long tiempoFinAccion = 0;
 String   comandoActivo        = "DETENER";
 
@@ -204,12 +205,22 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     activarCanalSeguro(CANAL_LUZ_LED, "LUZ_LED", dur);
   }
   else if (cmd == "ACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 10)) {
-    unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(CANAL_ACTIVAR_SONIDO, "ACTIVAR_SONIDO", dur);
+    if (!sonidoFisicoActivo) {
+      sonidoFisicoActivo = true;
+      unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
+      activarCanalSeguro(CANAL_ACTIVAR_SONIDO, "ACTIVAR_SONIDO", dur);
+    } else {
+      Serial.println(F("[SONIDO] Ya estaba activado (se ignora pulso para no apagarlo)."));
+    }
   }
   else if (cmd == "DESACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 11)) {
-    unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(CANAL_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
+    if (sonidoFisicoActivo) {
+      sonidoFisicoActivo = false;
+      unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
+      activarCanalSeguro(CANAL_DESACTIVAR_SONIDO, "DESACTIVAR_SONIDO", dur);
+    } else {
+      Serial.println(F("[SONIDO] Ya estaba desactivado (se ignora pulso para no encenderlo)."));
+    }
   }
   else if (cmd == "CONTROL_REMOTO" || cmd == "VELOCIDAD" || (cmd.length() == 0 && idNum == 12)) {
     modoVelocidadAlta = !modoVelocidadAlta;
