@@ -48,16 +48,16 @@ uint8_t PIN_DATA  = D7;   // GPIO13 -> Pin 14 (DS / SER)     del 1er 74HC595
 // ==============================================================================
 int CANAL_ADELANTE          = 3;   // T3  -> ADELANTE (Dirección OK)
 int CANAL_ATRAS             = 2;   // T2  -> ATRÁS (Dirección OK)
-int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA (Dirección OK)
-int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA (Dirección OK)
-int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> VOLTEAR IZQUIERDA (en lugar de 11 que iba recto atrás)
-int CANAL_MOVER_DERECHA     = 7;   // T7  -> MOVER DERECHA (en lugar de 10 que iba recto enfrente)
+int CANAL_GIRAR_IZQUIERDA   = 4;   // T4  -> GIRAR IZQUIERDA (Garra/Cabina Izq)
+int CANAL_GIRAR_DERECHA     = 1;   // T1  -> GIRAR DERECHA (Garra/Cabina Der)
+int CANAL_MOVER_IZQUIERDA   = 12;  // T12 -> MOVER IZQUIERDA (Carrito completo Izq)
+int CANAL_MOVER_DERECHA     = 10;  // T10 -> MOVER DERECHA (Carrito completo Der)
 int CANAL_SUBIR_BRAZO       = 8;   // T8  -> SUBIR BRAZO (confirmado)
 int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = 10;  // T10 -> Pin físico de VELOCIDAD (impulso directo sin girar ni activar DEMO)
+int CANAL_CONTROL_REMOTO    = 5;   // T5  -> Pin físico de VELOCIDAD
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -66,9 +66,9 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS   = 1500; // Movimiento continuo y fluido para Dirección y Mover Izq/Der (sin pausas)
-const unsigned long DURACION_BRAZO_MS     = 3500; // Recorrido completo para SUBIR_BRAZO y BAJAR_BRAZO
-const unsigned long DURACION_AUXILIAR_MS  = 700;  // Pulso controlado para Luz, Sonido y Velocidad
+const unsigned long DURACION_DEFECTO_MS   = 480;  // Paso corto y controlado por toque (para que no se vaya muy rápido)
+const unsigned long DURACION_BRAZO_MS     = 650;  // Paso controlado para brazo en toque manual (en DEMO se reenvía para recorrido completo)
+const unsigned long DURACION_AUXILIAR_MS  = 550;  // Pulso controlado para Luz, Sonido y Velocidad
 const unsigned long DURACION_MAXIMA_MS    = 5000; // Límite máximo de seguridad
 const unsigned long PAUSA_TRANSICION_MS   = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
 const unsigned long TIEMPO_RESET_BTN_MS   = 5000; // 5 segundos para resetear Wi-Fi (8.2)
@@ -169,7 +169,7 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     return;
   }
 
-  unsigned long durContinua = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 2200UL : DURACION_DEFECTO_MS);
+  unsigned long durContinua = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 850UL : DURACION_DEFECTO_MS);
 
   // 2. Mapeo 1 a 1 por código en TEXTO EXACTO (prioritario) o id_comando numérico (respaldo)
   if (cmd == "ADELANTE" || (cmd.length() == 0 && idNum == 1)) {
@@ -185,10 +185,10 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", durContinua);
   }
   else if (cmd == "MOVER_IZQUIERDA" || (cmd.length() == 0 && idNum == 5)) {
-    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "MOVER_IZQUIERDA", durContinua);
+    activarCanalSeguro(CANAL_MOVER_IZQUIERDA, "MOVER_IZQUIERDA", durContinua);
   }
   else if (cmd == "MOVER_DERECHA" || (cmd.length() == 0 && idNum == 6)) {
-    activarCanalSeguro(CANAL_GIRAR_DERECHA, "MOVER_DERECHA", durContinua);
+    activarCanalSeguro(CANAL_MOVER_DERECHA, "MOVER_DERECHA", durContinua);
   }
   else if (cmd == "SUBIR_BRAZO" || (cmd.length() == 0 && idNum == 7)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_BRAZO_MS;
