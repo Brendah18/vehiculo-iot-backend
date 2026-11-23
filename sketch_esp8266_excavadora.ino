@@ -57,7 +57,7 @@ int CANAL_BAJAR_BRAZO       = 9;   // T9  -> BAJAR BRAZO (confirmado)
 int CANAL_LUZ_LED           = 14;  // T14 -> LUZ LED
 int CANAL_ACTIVAR_SONIDO    = 15;  // T15 -> ACTIVAR SONIDO (confirmado)
 int CANAL_DESACTIVAR_SONIDO = 15;  // T15 -> DESACTIVAR SONIDO (mismo botón)
-int CANAL_CONTROL_REMOTO    = 12;  // T12 -> Pin físico del movimiento 12 (VELOCIDAD)
+int CANAL_CONTROL_REMOTO    = 10;  // T10 -> Pin físico de VELOCIDAD (impulso directo sin girar ni activar DEMO)
 
 // Si tus módulos PC817 se activan con señal en BAJO (LOW), cambia esto a true.
 // En los módulos verdes HY-M154 estándar normalmente se activan en ALTO (false).
@@ -66,10 +66,9 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS   = 1400; // Mismo tiempo uniforme para ADELANTE y ATRÁS (sin cortar antes de 1200 ms)
-const unsigned long DURACION_GIRO_PASO_MS = 230;  // Pulso corto al tocar izquierda/derecha (paso a paso, no de jalón)
+const unsigned long DURACION_DEFECTO_MS   = 1500; // Movimiento continuo y fluido para Dirección y Mover Izq/Der (sin pausas)
 const unsigned long DURACION_BRAZO_MS     = 3500; // Recorrido completo para SUBIR_BRAZO y BAJAR_BRAZO
-const unsigned long DURACION_AUXILIAR_MS  = 600;  // Pulso controlado para Luz, Sonido y Velocidad
+const unsigned long DURACION_AUXILIAR_MS  = 700;  // Pulso controlado para Luz, Sonido y Velocidad
 const unsigned long DURACION_MAXIMA_MS    = 5000; // Límite máximo de seguridad
 const unsigned long PAUSA_TRANSICION_MS   = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
 const unsigned long TIEMPO_RESET_BTN_MS   = 5000; // 5 segundos para resetear Wi-Fi (8.2)
@@ -170,27 +169,26 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     return;
   }
 
-  unsigned long durTraccion = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 1500UL : DURACION_DEFECTO_MS);
-  unsigned long durGiroPaso = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 420UL  : DURACION_GIRO_PASO_MS);
+  unsigned long durContinua = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 2200UL : DURACION_DEFECTO_MS);
 
   // 2. Mapeo 1 a 1 por código en TEXTO EXACTO (prioritario) o id_comando numérico (respaldo)
   if (cmd == "ADELANTE" || (cmd.length() == 0 && idNum == 1)) {
-    activarCanalSeguro(CANAL_ADELANTE, "ADELANTE", durTraccion);
+    activarCanalSeguro(CANAL_ADELANTE, "ADELANTE", durContinua);
   }
   else if (cmd == "ATRAS" || cmd == "ATRÁS" || (cmd.length() == 0 && idNum == 2)) {
-    activarCanalSeguro(CANAL_ATRAS, "ATRAS", durTraccion);
+    activarCanalSeguro(CANAL_ATRAS, "ATRAS", durContinua);
   }
   else if (cmd == "GIRAR_IZQUIERDA" || (cmd.length() == 0 && idNum == 3)) {
-    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", durGiroPaso);
+    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", durContinua);
   }
   else if (cmd == "GIRAR_DERECHA" || (cmd.length() == 0 && idNum == 4)) {
-    activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", durGiroPaso);
+    activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", durContinua);
   }
   else if (cmd == "MOVER_IZQUIERDA" || (cmd.length() == 0 && idNum == 5)) {
-    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "MOVER_IZQUIERDA", durGiroPaso);
+    activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "MOVER_IZQUIERDA", durContinua);
   }
   else if (cmd == "MOVER_DERECHA" || (cmd.length() == 0 && idNum == 6)) {
-    activarCanalSeguro(CANAL_GIRAR_DERECHA, "MOVER_DERECHA", durGiroPaso);
+    activarCanalSeguro(CANAL_GIRAR_DERECHA, "MOVER_DERECHA", durContinua);
   }
   else if (cmd == "SUBIR_BRAZO" || (cmd.length() == 0 && idNum == 7)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_BRAZO_MS;
