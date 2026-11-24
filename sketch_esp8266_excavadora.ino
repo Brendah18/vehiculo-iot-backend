@@ -526,6 +526,8 @@ void revisarComandosSerial() {
       Serial.print(F("Activando canal physical "));
       Serial.println(b);
       escribirRegistros595((uint16_t)(1U << b));
+      if (b == CANAL_LUZ_LED) luzFisicaActiva = !luzFisicaActiva;
+      if (b == CANAL_ACTIVAR_SONIDO) sonidoFisicoActivo = !sonidoFisicoActivo;
       delay(650);
       escribirRegistros595(0x0000);
       delay(200);
@@ -541,6 +543,8 @@ void revisarComandosSerial() {
       Serial.print(F("[TEST] Probando bit Q"));
       Serial.print(bitPrueba);
       Serial.println(F(" durante 1000 ms..."));
+      if (bitPrueba == CANAL_LUZ_LED) luzFisicaActiva = !luzFisicaActiva;
+      if (bitPrueba == CANAL_ACTIVAR_SONIDO) sonidoFisicoActivo = !sonidoFisicoActivo;
       activarCanalSeguro(bitPrueba, "TEST_Q" + String(bitPrueba), 1000);
     } else {
       Serial.println(F("[TEST] Usa T0 hasta T15 (ejemplo: T0, T1, ..., T9)."));
