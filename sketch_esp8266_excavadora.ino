@@ -199,7 +199,7 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs, String ori
   else if (cmd == "GIRAR_IZQUIERDA" || (cmd.length() == 0 && idNum == 3)) {
     activarCanalSeguro(CANAL_GIRAR_IZQUIERDA, "GIRAR_IZQUIERDA", durContinua);
   }
-  else if (cmd == "GIRAR_DERECHA" || (cmd.length() == 0 && idNum == 4)) {
+  else if (cmd == "GIRAR_DERECHA" || cmd == "DERECHA" || idNum == 4) {
     activarCanalSeguro(CANAL_GIRAR_DERECHA, "GIRAR_DERECHA", durContinua);
   }
   else if (cmd == "MOVER_IZQUIERDA" || (cmd.length() == 0 && idNum == 5)) {
@@ -363,6 +363,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         }
         if (est.containsKey("codigo") && !est["codigo"].isNull()) {
           codigo = est["codigo"].as<int>();
+        }
+        if (codigo == -1 && est.containsKey("id_comando") && !est["id_comando"].isNull()) {
+          codigo = est["id_comando"].as<int>();
         }
       }
 
