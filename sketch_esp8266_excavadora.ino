@@ -82,7 +82,7 @@ uint16_t mascaraActual        = 0x0000;
 bool     salidaActiva         = false;
 bool     modoVelocidadAlta    = false;
 bool     sonidoFisicoActivo   = false;
-bool     luzFisicaActiva      = false;
+bool     luzFisicaActiva      = true; // La excavadora enciende con el LED prendido por defecto: Apagar apaga primero y Prender prende
 unsigned long tiempoFinAccion = 0;
 String   comandoActivo        = "DETENER";
 
