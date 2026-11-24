@@ -66,11 +66,11 @@ const bool LOGICA_INVERTIDA = false;
 // ==============================================================================
 // 4. TIEMPOS DE SEGURIDAD (RN09 y RN10)
 // ==============================================================================
-const unsigned long DURACION_DEFECTO_MS   = 480;  // Paso corto y controlado por toque (para que no se vaya muy rápido)
-const unsigned long DURACION_BRAZO_MS     = 650;  // Paso controlado para brazo en toque manual (en DEMO se reenvía para recorrido completo)
-const unsigned long DURACION_AUXILIAR_MS  = 550;  // Pulso controlado para Luz, Sonido y Velocidad
+const unsigned long DURACION_DEFECTO_MS   = 850;  // Paso fluido por toque y continuo sin cortes al mantener presionado
+const unsigned long DURACION_BRAZO_MS     = 950;  // Recorrido fluido para brazo (y continuo sin cortes al mantener o en DEMO)
+const unsigned long DURACION_AUXILIAR_MS  = 500;  // Pulso limpio para Luz, Sonido y Velocidad
 const unsigned long DURACION_MAXIMA_MS    = 5000; // Límite máximo de seguridad
-const unsigned long PAUSA_TRANSICION_MS   = 220;  // 220 ms en neutro para que el control RF suelte el botón anterior en la DEMO
+const unsigned long PAUSA_TRANSICION_MS   = 140;  // Pausa breve en neutro solo al cambiar entre canales distintos
 const unsigned long TIEMPO_RESET_BTN_MS   = 5000; // 5 segundos para resetear Wi-Fi (8.2)
 
 // ==============================================================================
@@ -82,6 +82,7 @@ uint16_t mascaraActual        = 0x0000;
 bool     salidaActiva         = false;
 bool     modoVelocidadAlta    = false;
 bool     sonidoFisicoActivo   = false;
+bool     luzFisicaActiva      = false;
 unsigned long tiempoFinAccion = 0;
 String   comandoActivo        = "DETENER";
 
@@ -126,12 +127,6 @@ void activarCanalSeguro(int bitCanal, const String& nombreCmd, unsigned long dur
     return;
   }
 
-  // RN08 y RN09: Liberar orden previa antes de activar la nueva
-  if (salidaActiva) {
-    escribirRegistros595(0x0000);
-    delay(PAUSA_TRANSICION_MS);
-  }
-
   // RN10: Aplicar límite máximo de tiempo
   if (duracionMs == 0) {
     duracionMs = DURACION_DEFECTO_MS;
@@ -140,6 +135,27 @@ void activarCanalSeguro(int bitCanal, const String& nombreCmd, unsigned long dur
   }
 
   uint16_t nuevaMascara = (uint16_t)(1U << bitCanal);
+
+  // Si ya está activo el MISMO canal, extender tiempo SIN apagar ni pausar (movimiento 100% continuo y fluido)
+  if (salidaActiva && mascaraActual == nuevaMascara) {
+    comandoActivo   = nombreCmd;
+    tiempoFinAccion = millis() + duracionMs;
+    Serial.print(F("[CONTINUO] "));
+    Serial.print(nombreCmd);
+    Serial.print(F(" | Bit Q"));
+    Serial.print(bitCanal);
+    Serial.print(F(" extendido +"));
+    Serial.print(duracionMs);
+    Serial.println(F(" ms"));
+    return;
+  }
+
+  // RN08 y RN09: Solo al cambiar a otro canal distinto, liberar orden previa antes de activar la nueva
+  if (salidaActiva) {
+    escribirRegistros595(0x0000);
+    delay(PAUSA_TRANSICION_MS);
+  }
+
   escribirRegistros595(nuevaMascara);
 
   salidaActiva    = true;
@@ -158,10 +174,12 @@ void activarCanalSeguro(int bitCanal, const String& nombreCmd, unsigned long dur
 // ==============================================================================
 // 7. MAPEO DE COMANDOS DEL CATÁLOGO RDS -> CANAL DEL 74HC595
 // ==============================================================================
-void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
+void procesarComando(String cmd, int idNum, unsigned long duracionMs, String origen = "") {
   cmd.trim();
   cmd.toUpperCase();
   cmd.replace(" ", "_");
+  origen.trim();
+  origen.toUpperCase();
 
   // 1. Detención prioritaria inmediata (DETENER / id 13 o 0)
   if (cmd == "DETENER" || cmd == "STOP" || (cmd.length() == 0 && (idNum == 13 || idNum == 0))) {
@@ -169,7 +187,7 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
     return;
   }
 
-  unsigned long durContinua = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 850UL : DURACION_DEFECTO_MS);
+  unsigned long durContinua = (duracionMs > 0) ? duracionMs : (modoVelocidadAlta ? 1250UL : DURACION_DEFECTO_MS);
 
   // 2. Mapeo 1 a 1 por código en TEXTO EXACTO (prioritario) o id_comando numérico (respaldo)
   if (cmd == "ADELANTE" || (cmd.length() == 0 && idNum == 1)) {
@@ -200,7 +218,24 @@ void procesarComando(String cmd, int idNum, unsigned long duracionMs) {
   }
   else if (cmd == "LUZ_LED" || (cmd.length() == 0 && idNum == 9)) {
     unsigned long dur = (duracionMs > 0) ? duracionMs : DURACION_AUXILIAR_MS;
-    activarCanalSeguro(CANAL_LUZ_LED, "LUZ_LED", dur);
+    if (origen.indexOf("LUZ-ON") >= 0) {
+      if (!luzFisicaActiva) {
+        luzFisicaActiva = true;
+        activarCanalSeguro(CANAL_LUZ_LED, "LUZ_LED_ON", dur);
+      } else {
+        Serial.println(F("[LUZ] Ya estaba encendida (se ignora pulso para no apagarla)."));
+      }
+    } else if (origen.indexOf("LUZ-OFF") >= 0) {
+      if (luzFisicaActiva) {
+        luzFisicaActiva = false;
+        activarCanalSeguro(CANAL_LUZ_LED, "LUZ_LED_OFF", dur);
+      } else {
+        Serial.println(F("[LUZ] Ya estaba apagada (se ignora pulso para no encenderla)."));
+      }
+    } else {
+      luzFisicaActiva = !luzFisicaActiva;
+      activarCanalSeguro(CANAL_LUZ_LED, "LUZ_LED", dur);
+    }
   }
   else if (cmd == "ACTIVAR_SONIDO" || (cmd.length() == 0 && idNum == 10)) {
     if (!sonidoFisicoActivo) {
@@ -315,8 +350,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         return;
       }
 
-      // 3. Extraer comando, acción, código y duración
+      // 3. Extraer comando, acción, código, origen y duración
       String comando = "";
+      String origen = doc["origen"] | "";
       int codigo = -1;
       unsigned long duracionMs = 0;
 
@@ -353,7 +389,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
       // 4. Ejecutar el comando físicamente en los 74HC595 -> PC817
       if (comando.length() > 0 || codigo != -1) {
-        procesarComando(comando, codigo, duracionMs);
+        procesarComando(comando, codigo, duracionMs, origen);
       }
       break;
     }
